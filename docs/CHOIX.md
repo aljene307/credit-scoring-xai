@@ -128,6 +128,23 @@ ou bruit dans les étiquettes.
 - **Alternative écartée :** notebook sans sorties (plus léger, mais il faut
   le réexécuter pour voir les résultats).
 
+### C10. Graphiques : Matplotlib dans le notebook, Plotly dans l'application — retenu
+- **Choix :** les graphiques du notebook sont faits avec Matplotlib (images
+  fixes) ; ceux de l'application avec Plotly (interactifs : survol, zoom).
+- **Raison :** GitHub n'affiche pas les graphiques Plotly d'un notebook (ils
+  apparaissent vides) ; Matplotlib sera de toute façon installé avec SHAP.
+- **Alternative écartée :** Plotly avec export en images par kaleido
+  (dépendance supplémentaire, parfois difficile à installer sous Windows).
+
+### C11. Couleurs des graphiques — retenu
+- **Choix :** bleu `#2a78d6` pour « pas de défaut », orange `#eb6834` pour
+  « défaut » ; corrélations sur une échelle bleu ↔ gris ↔ rouge centrée sur 0.
+- **Raison :** paire de couleurs distinguable par les personnes daltoniennes ;
+  une échelle divergente avec un milieu neutre montre le signe de la
+  corrélation sans arc-en-ciel.
+- **Alternative écartée :** les couleurs par défaut de Plotly (vert et rouge
+  sont confondus par les daltoniens les plus fréquents).
+
 ### C08. Renommage contrôlé par les métadonnées UCI — retenu
 - **Choix :** la correspondance X1…X23 → noms lisibles est écrite dans le code,
   et à chaque téléchargement elle est comparée aux descriptions fournies par

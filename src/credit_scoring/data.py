@@ -74,6 +74,24 @@ def load_credit_data(cache_path: Path = CACHE_FILE, refresh: bool = False) -> pd
     return df
 
 
+def binarize_target(df: pd.DataFrame, target: str, positive) -> pd.DataFrame:
+    """Prépare un CSV importé : cible ramenée à 1 (classe positive) / 0.
+
+    Les lignes sans valeur de cible sont retirées ; la cible doit avoir
+    exactement deux valeurs distinctes.
+    """
+    values = df[target].dropna().unique()
+    if len(values) != 2:
+        raise ValueError(
+            f"La cible « {target} » doit avoir exactement deux valeurs, elle en a {len(values)}."
+        )
+    if positive not in values:
+        raise ValueError(f"La valeur « {positive} » n'existe pas dans la cible « {target} ».")
+    prepared = df.dropna(subset=[target]).copy()
+    prepared[target] = (prepared[target] == positive).astype(int)
+    return prepared
+
+
 def recode_undocumented(df: pd.DataFrame) -> pd.DataFrame:
     """Regroupe les modalités non documentées (EDUCATION 0/5/6 -> 4, MARRIAGE 0 -> 3).
 
