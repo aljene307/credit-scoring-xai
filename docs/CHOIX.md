@@ -135,6 +135,11 @@ ou bruit dans les étiquettes.
   apparaissent vides) ; Matplotlib sera de toute façon installé avec SHAP.
 - **Alternative écartée :** Plotly avec export en images par kaleido
   (dépendance supplémentaire, parfois difficile à installer sous Windows).
+- **Installation :** Matplotlib est dans `requirements-dev.txt` tant que seul
+  le notebook l'utilise ; il passera dans `requirements.txt` avec SHAP.
+- **Lisibilité :** les tranches de quantiles sont libellées par les valeurs
+  réellement observées (« 10 000 – 30 000 ») ; dans le notebook, les barres
+  reposant sur moins de 30 clients sont grisées (taux instable).
 
 ### C11. Couleurs des graphiques — retenu
 - **Choix :** bleu `#2a78d6` pour « pas de défaut », orange `#eb6834` pour

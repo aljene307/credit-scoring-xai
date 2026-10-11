@@ -65,6 +65,15 @@ def test_positive_rate_by_continuous_uses_quantile_bins():
     assert table["clients"].sum() == len(df)
 
 
+def test_quantile_bins_are_labelled_with_observed_ranges():
+    # 20 valeurs distinctes : au-delà du seuil, donc découpage en tranches.
+    df = pd.DataFrame({"AGE": range(21, 41), "LIMIT_BAL": range(10_000, 210_000, 10_000), "y": [0, 1] * 10})
+    ages = eda.positive_rate_by(df, "AGE", "y", categorical=False, n_bins=2)
+    assert list(ages.index) == ["21 – 30", "31 – 40"]
+    limits = eda.positive_rate_by(df, "LIMIT_BAL", "y", categorical=False, n_bins=2)
+    assert list(limits.index) == ["10 000 – 100 000", "110 000 – 200 000"]
+
+
 def test_positive_rate_by_keeps_missing_values_as_a_group():
     df = make_frame()
     df["LIMIT_BAL"] = df["LIMIT_BAL"].astype(float)

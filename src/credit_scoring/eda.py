@@ -42,6 +42,28 @@ def display_value(col: str, value) -> str:
     return str(value)
 
 
+def _format_range(low: float, high: float) -> str:
+    if float(low).is_integer() and float(high).is_integer():
+        return f"{low:,.0f} – {high:,.0f}".replace(",", " ")
+    return f"{low:.3g} – {high:.3g}"
+
+
+def _bin_labels(values: pd.Series, bins: pd.Series) -> list[str]:
+    """Libellés « min – max » des valeurs réellement observées dans chaque tranche.
+
+    Plus lisibles que les intervalles de pd.qcut (ex. « (9999.999, 30000.0] »).
+    Si deux tranches donnaient le même libellé, on garde les intervalles bruts.
+    """
+    ranges = values.groupby(bins, observed=True).agg(["min", "max"])
+    labels = [
+        _format_range(*ranges.loc[interval]) if interval in ranges.index else str(interval)
+        for interval in bins.cat.categories
+    ]
+    if len(set(labels)) < len(labels):
+        return [str(interval) for interval in bins.cat.categories]
+    return labels
+
+
 def positive_rate_by(
     df: pd.DataFrame, col: str, target: str, categorical: bool, n_bins: int = 10
 ) -> pd.DataFrame:
@@ -60,8 +82,8 @@ def positive_rate_by(
         order = [display_value(col, v) for v in uniques]
     else:
         bins = pd.qcut(values, q=n_bins, duplicates="drop")
-        groups = bins.astype(str).where(bins.notna(), "manquant")
-        order = [str(interval) for interval in bins.cat.categories]
+        order = _bin_labels(values, bins)
+        groups = bins.cat.rename_categories(order).astype(str).where(bins.notna(), "manquant")
     if groups.eq("manquant").any():
         order.append("manquant")
 
