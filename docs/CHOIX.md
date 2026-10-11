@@ -58,6 +58,25 @@ données) ou **en attente** (sera tranché à une étape ultérieure).
 - **Alternative écartée :** notebook sans sorties (plus léger, mais il faut
   le réexécuter pour voir les résultats).
 
+### C08. Renommage contrôlé par les métadonnées UCI — retenu
+- **Choix :** la correspondance X1…X23 → noms lisibles est écrite dans le code,
+  et à chaque téléchargement elle est comparée aux descriptions fournies par
+  l'UCI (`fetch_ucirepo(id=350).variables`). En cas d'écart, le chargement
+  s'arrête avec un message explicite.
+- **Raison :** les métadonnées UCI donnent bien X1 = LIMIT_BAL … X6 = PAY_0,
+  X7 = PAY_2 … X23 = PAY_AMT6 (il n'existe pas de PAY_1 dans le jeu d'origine).
+  Si l'UCI changeait l'ordre des colonnes, un renommage non contrôlé
+  inverserait des variables sans aucune erreur visible.
+- **Alternative écartée :** renommer directement à partir des descriptions
+  UCI (le code dépendrait du réseau, y compris dans les tests).
+
+### C09. Identifiant client (ID) conservé comme index — retenu
+- **Choix :** la colonne `ID` fournie par l'UCI devient l'index du tableau ;
+  elle n'est jamais utilisée comme variable explicative.
+- **Raison :** permet de désigner un client précis dans l'application
+  (explication locale) ; un numéro d'ordre n'a aucun sens prédictif.
+- **Alternative écartée :** supprimer l'identifiant.
+
 ---
 
 ## Préparation des données
