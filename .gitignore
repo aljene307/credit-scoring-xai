@@ -1,0 +1,65 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# --- Environnement virtuel ---
+.venv/
+venv/
+env/
+
+# --- Caches Python et outils ---
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+*.egg-info/
+build/
+dist/
+
+# --- Données téléchargées et fichiers d'entrée ---
+data/
+*.csv
+*.xls
+*.xlsx
+
+# --- Modèles entraînés (taille encore inconnue) ---
+models/
+*.joblib
+*.pkl
+
+# --- Sorties et exports ---
+outputs/
+exports/
+reports/tmp/
+
+# --- Sauvegardes ---
+backup/
+backups/
+sauvegarde/
+sauvegardes/
+*.bak
+*.orig
+
+# --- Captures d'écran non relues ---
+# Seules les captures relues sont déplacées dans docs/captures/.
+captures_a_relire/
+Screenshot*.png
+Capture*.png
+
+# --- Front-end éventuel ---
+node_modules/
+
+# --- Système et éditeurs ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# --- Sujet du projet (ne pas publier) ---
+Projet_Challenge_1_Classification_Explicable.pdf
