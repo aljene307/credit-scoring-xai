@@ -10,6 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # CREDIT_DATA_DIR (utile si le paquet n'est pas installé en mode modifiable).
 DATA_DIR = Path(os.environ.get("CREDIT_DATA_DIR", PROJECT_ROOT / "data"))
 CACHE_FILE = DATA_DIR / "credit_default.parquet"
+# Modèles entraînés et résumé des résultats (dossier ignoré par Git, choix A05).
+MODELS_DIR = Path(os.environ.get("CREDIT_MODELS_DIR", PROJECT_ROOT / "models"))
 
 UCI_DATASET_ID = 350
 RANDOM_STATE = 42

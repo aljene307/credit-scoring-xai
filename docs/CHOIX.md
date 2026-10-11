@@ -266,6 +266,10 @@ ou bruit dans les étiquettes.
 
 ### M02. Optimisation par GridSearchCV, validation croisée stratifiée à 5 plis — retenu
 - **Choix :** `GridSearchCV` sur le jeu d'entraînement seulement, score AUC-ROC.
+  Les 5 plis sont stratifiés, mélangés avec la graine 42, et identiques pour
+  les quatre modèles. PR-AUC, F1, rappel et précision sont aussi calculés à
+  chaque essai (tableau comparatif), et l'AUC sur les plis d'entraînement est
+  conservée pour détecter le surapprentissage.
 - **Raison :** l'AUC mesure la capacité à classer les clients du plus au moins
   risqué, indépendamment du seuil, ce qui est l'usage d'un score de crédit.
 - **Alternatives écartées :** F1 (dépend du seuil) ; PR-AUC (affichée mais pas
@@ -283,6 +287,11 @@ ou bruit dans les étiquettes.
   probabilités de défaut réelles.
 - **Alternative écartée :** SMOTE (crée des clients synthétiques, dépendance
   supplémentaire, explications SHAP sur des données artificielles).
+- **Résultat (validation croisée) :** la pondération est retenue pour la
+  régression logistique, Random Forest et XGBoost, mais son effet sur l'AUC
+  est négligeable : +0,0004, +0,0004 et +0,0001. Pour l'arbre, la meilleure
+  combinaison sans pondération est meilleure de 0,0066. Comme prévu, la
+  pondération change surtout les probabilités et donc le seuil utile.
 
 ### M04. Modèles de référence entraînés hors ligne — retenu
 - **Choix :** un script entraîne et sauvegarde les modèles ; l'interface permet
@@ -291,7 +300,13 @@ ou bruit dans les étiquettes.
   et dépasse les ressources de Streamlit Community Cloud.
 - **Alternative écartée :** tout entraîner à chaque ouverture de l'application.
 
-### M05. Relation non linéaire entre PAY_0 et le risque — à vérifier avec les résultats
+### M05. Relation non linéaire entre PAY_0 et le risque — confirmé en partie (étape 3)
+- **Résultat :** AUC de validation 0,728 pour la régression logistique contre
+  0,767 à 0,785 pour les trois modèles à base d'arbres. Le meilleur `C` est la
+  plus grande valeur de la grille (régularisation la plus faible) et l'AUC
+  varie de moins de 0,002 entre `C` = 0,1 et 10 : le modèle n'est pas freiné
+  par la régularisation mais limité par sa forme linéaire. Confirmation à
+  chercher dans les graphiques de dépendance SHAP (étape 5).
 - **Constat :** le taux de défaut est plat de PAY_0 = -2 à 0 (13 à 17 %), puis
   saute à 1 (33,9 %) et à 2 (69,1 %).
 - **Conséquence attendue :** la régression logistique suppose un effet
@@ -299,6 +314,29 @@ ou bruit dans les étiquettes.
   par rapport aux arbres, qui découpent librement les seuils.
 - **À vérifier à l'étape 3 :** comparer les performances, et regarder la forme
   de l'effet de PAY_0 dans les graphiques de dépendance SHAP.
+
+### M06. Grilles d'hyperparamètres de référence — retenu
+| Modèle | Grille | Combinaisons |
+|---|---|---|
+| Régression logistique | `C` ∈ {0,01 ; 0,1 ; 1 ; 10}, `class_weight` ∈ {aucun, balanced} | 8 |
+| Arbre de décision | `max_depth` ∈ {3, 5, 8, 12}, `min_samples_leaf` ∈ {1, 20, 100}, `class_weight` ∈ {aucun, balanced} | 24 |
+| Random Forest (300 arbres) | `max_depth` ∈ {8, 12, sans limite}, `min_samples_leaf` ∈ {1, 10}, `max_features` ∈ {sqrt, 0,5}, `class_weight` ∈ {aucun, balanced_subsample} | 24 |
+| XGBoost | `n_estimators` ∈ {200, 400}, `learning_rate` ∈ {0,05 ; 0,1}, `max_depth` ∈ {3, 5}, `subsample` ∈ {0,8 ; 1}, `scale_pos_weight` ∈ {1 ; bons / défauts} | 32 |
+
+- **Raison :** chaque grille croise un réglage de complexité (profondeur,
+  régularisation, nombre d'arbres) avec la pondération des classes (M03).
+  Le nombre d'arbres de Random Forest est fixé à 300 : en ajouter ne cause
+  pas de surapprentissage, seulement un coût en temps.
+- **Temps estimé** à partir de mesures sur le PC de développement (12 cœurs
+  logiques) : 7 à 15 minutes pour les 88 combinaisons × 5 plis.
+  **Temps réel :** régression logistique 10 s, arbre 8 s, Random Forest
+  749 s (12,5 min, au-dessus de l'estimation de 5 à 10 min), XGBoost 74 s ;
+  environ 14 minutes au total.
+- **Parallélisation :** GridSearchCV répartit les entraînements sur tous les
+  cœurs ; Random Forest et XGBoost utilisent un seul cœur chacun pour ne pas
+  se concurrencer.
+- **Alternative écartée :** Random Forest allégé sans `max_features = 0,5`
+  (1 à 2 minutes au lieu de 5 à 10, mais une piste de réglage en moins).
 
 ---
 
@@ -312,8 +350,12 @@ ou bruit dans les étiquettes.
 - **Raison :** choisir le seuil sur le test reviendrait à régler le modèle sur
   le test et rendrait l'évaluation finale trop optimiste.
 - **Alternative écartée :** choisir le seuil en regardant le test.
-- **En attente :** critère de choix du seuil (F1 maximal, point du KS, coût
-  métier).
+- **Critère retenu :** F1 maximal de la classe « défaut » (meilleur équilibre
+  entre précision et rappel, cohérent avec la métrique F1 demandée). Le seuil
+  du KS est calculé et affiché à côté, avec la précision et le rappel obtenus
+  à chacun des deux seuils, pour comparaison.
+- **Critères écartés :** rappel minimal imposé (chiffre à fixer par le
+  métier) ; coût métier (coûts d'erreur non fournis par le jeu).
 
 ### E02. Métriques — retenu
 - **Choix :** AUC-ROC, précision, rappel et F1 sur la classe « défaut »,
@@ -357,6 +399,21 @@ ou bruit dans les étiquettes.
 ### A05. Modèles entraînés hors du dépôt pour l'instant — en attente
 - **Choix :** `models/` est ignoré par Git tant que la taille des fichiers
   n'est pas connue.
+- **Tailles mesurées** (joblib, compression de niveau 3, scikit-learn 1.9.1,
+  XGBoost 3.2.0) :
+
+  | Fichier | Taille |
+  |---|---|
+  | `logreg.joblib` | 0,003 Mo |
+  | `arbre.joblib` | 0,011 Mo |
+  | `random_forest.joblib` | **17,2 Mo** (300 arbres sans limite de profondeur) |
+  | `xgboost.joblib` | 0,046 Mo |
+  | `resultats.json` + 4 `grille_*.parquet` | 0,05 Mo au total |
+
+  Total : environ 17,3 Mo, dont 99,6 % pour Random Forest. GitHub refuse les
+  fichiers de plus de 100 Mo et avertit au-delà de 50 Mo : les quatre modèles
+  pourraient être commités. Un fichier binaire de 17 Mo alourdit cependant
+  l'historique à chaque nouvel entraînement.
 - **À trancher au déploiement :** commiter les modèles, les réentraîner à la
   construction de l'image Docker, ou les héberger ailleurs.
 
