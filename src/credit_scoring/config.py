@@ -49,6 +49,9 @@ COLUMN_NAMES = {**FEATURE_NAMES, TARGET_SOURCE: TARGET}
 
 # Variables codées en entiers mais sans ordre : encodées en one-hot (choix P01).
 CATEGORICAL_FEATURES = ["SEX", "EDUCATION", "MARRIAGE"]
+# Variables sensibles : gardées par défaut, exclusion possible (choix P08).
+SENSITIVE_FEATURES = ["SEX", "AGE", "MARRIAGE", "EDUCATION"]
+TEST_SIZE = 0.2
 # Statuts de remboursement, gardés numériques car ordinaux (choix P02).
 PAY_STATUS_FEATURES = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
 BILL_FEATURES = [f"BILL_AMT{i}" for i in range(1, 7)]

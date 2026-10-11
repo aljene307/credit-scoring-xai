@@ -190,20 +190,68 @@ ou bruit dans les étiquettes.
 
 ### P03. Prétraitement dans un Pipeline à l'intérieur de GridSearchCV — retenu
 - **Choix :** `Pipeline(ColumnTransformer → modèle)` passé à `GridSearchCV`.
-  Le ColumnTransformer applique l'imputation, le one-hot (catégorielles) et la
-  standardisation (numériques).
-- **Raison :** l'encodeur et la standardisation sont réappris sur chaque pli
-  d'entraînement ; aucune information des plis de validation ne fuit dans le
-  réglage (consigne de l'enseignante).
+  Le ColumnTransformer applique l'imputation (médiane pour les numériques,
+  modalité la plus fréquente pour les catégorielles), le one-hot
+  (catégorielles) et, pour la régression logistique seulement, la
+  standardisation (P05).
+- **Raison :** l'imputation, l'encodeur et la standardisation sont réappris
+  sur chaque pli d'entraînement ; aucune information des plis de validation ne
+  fuit dans le réglage (consigne de l'enseignante).
 - **Alternative écartée :** prétraiter tout le jeu avant la validation croisée
   (fuite de données).
 
 ### P04. Séparation entraînement / test stratifiée — retenu
-- **Choix :** 80 % / 20 % par défaut (paramétrable), stratifiée sur la cible,
-  graine fixe.
+- **Choix :** 80 % / 20 % par défaut (paramétrable de 10 à 40 %), stratifiée
+  sur la cible, graine 42 (modifiable).
 - **Raison :** même proportion de défauts dans les deux jeux, résultats
-  reproductibles. Le jeu de test ne sert jamais au réglage.
-- **Alternative écartée :** séparation aléatoire simple.
+  reproductibles. La séparation est faite avant tout apprentissage ; le jeu de
+  test ne sert jamais au réglage.
+- **Alternatives écartées :** séparation aléatoire simple ; trois jeux
+  entraînement / validation / test (la validation croisée joue déjà le rôle de
+  jeu de validation) ; séparation chronologique (pas de date par client).
+
+### P05. Standardisation pour la régression logistique seulement — retenu
+- **Choix :** les variables numériques sont standardisées (moyenne 0,
+  écart-type 1, `StandardScaler`) uniquement dans le Pipeline de la régression
+  logistique. L'arbre de décision, Random Forest et XGBoost reçoivent les
+  variables numériques dans leur unité d'origine (imputation seulement).
+- **Raison :** la pénalité de la régression logistique traite tous les
+  coefficients de la même façon, ce qui suppose des variables à la même
+  échelle. Les arbres ne dépendent pas de l'échelle : la standardisation ne
+  changerait pas leurs prédictions, mais rendrait illisibles pour un décideur
+  les règles de l'arbre (« LIMIT_BAL ≤ -0,42 » au lieu de « LIMIT_BAL ≤ 75 000 »)
+  et les graphiques SHAP.
+- **Alternatives écartées :** un prétraitement identique pour les quatre
+  modèles (plus simple, mais explications en unités standardisées) ;
+  MinMaxScaler (très sensible aux montants extrêmes) ; transformation par
+  quantiles dans la grille de la régression logistique (GridSearch plus long).
+
+### P06. One-hot sans suppression de modalité, modalités inconnues ignorées — retenu
+- **Choix :** `OneHotEncoder(drop=None, handle_unknown="ignore")`.
+- **Raison :** avec la pénalité de la régression logistique, garder toutes les
+  modalités ne pose pas de problème de colinéarité, et le regroupement des
+  valeurs SHAP par variable d'origine (X01) est direct. Une modalité absente de
+  l'entraînement (CSV importé, saisie via l'API) donne des zéros au lieu d'une
+  erreur.
+- **Alternatives écartées :** supprimer la première modalité (`drop="first"`) ;
+  target encoding (inutile avec 2 à 4 modalités) ; encodage ordinal (impose un
+  ordre).
+
+### P07. Pas de nouvelles variables pour l'instant — retenu
+- **Choix :** les modèles utilisent les 23 variables d'origine.
+- **Raison :** explications directement compréhensibles ; on mesure d'abord.
+  Si la régression logistique souffre de la non-linéarité de PAY_0 (M05),
+  l'indicateur « retard ≥ 1 mois » sera la première amélioration testée.
+- **Alternative écartée :** ajouter dès maintenant un taux d'utilisation
+  (facture / plafond), un nombre de mois en retard, un indicateur de retard
+  (valables pour le jeu Taiwan seulement).
+
+### P08. Variables sensibles gardées par défaut, exclusion possible — retenu
+- **Choix :** SEX, AGE, MARRIAGE et EDUCATION sont utilisées par défaut ; la
+  page Préparation permet de les exclure.
+- **Raison :** l'analyse d'équité (module 5) compare les modèles avec et sans
+  ces variables ; les exclure d'office empêcherait de mesurer leur effet.
+- **Alternative écartée :** les exclure d'office.
 
 ---
 
