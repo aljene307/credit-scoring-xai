@@ -33,6 +33,29 @@ def test_clean_removes_only_execution_timestamps():
     nbformat.validate(nbformat.reads(json.dumps(cleaned), as_version=4))
 
 
+def test_clean_merges_split_print_outputs_without_changing_the_text():
+    nb = make_notebook()
+    cell = nb.cells[0]
+    cell.outputs = [
+        nbformat.v4.new_output("stream", name="stdout", text="Versions :"),
+        nbformat.v4.new_output("stream", name="stdout", text=" {'python': '3.11'}\nfin\n"),
+        nbformat.v4.new_output("stream", name="stderr", text="avertissement\n"),
+    ]
+    cleaned = json.loads(nettoyer_notebook.clean(nbformat.writes(nb)))
+    outputs = cleaned["cells"][0]["outputs"]
+    assert len(outputs) == 2  # les deux morceaux stdout fusionnés, stderr à part
+    assert "".join(outputs[0]["text"]) == "Versions : {'python': '3.11'}\nfin\n"
+    assert outputs[0]["text"] == ["Versions : {'python': '3.11'}\n", "fin\n"]
+    assert outputs[1]["name"] == "stderr"
+
+    # Le même print reçu en un seul morceau donne exactement le même fichier.
+    cell.outputs = [
+        nbformat.v4.new_output("stream", name="stdout", text="Versions : {'python': '3.11'}\nfin\n"),
+        nbformat.v4.new_output("stream", name="stderr", text="avertissement\n"),
+    ]
+    assert nettoyer_notebook.clean(nbformat.writes(nb)) == nettoyer_notebook.clean(json.dumps(cleaned))
+
+
 def test_clean_keeps_nbformat_layout_and_is_idempotent():
     nb = make_notebook()
     del nb.cells[0].metadata["execution"]

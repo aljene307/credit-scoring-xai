@@ -596,6 +596,13 @@ ou bruit dans les étiquettes.
 - **Limite :** le réglage `git config` est local ; il faut le refaire après un
   clonage (commande dans le README). Pour un fichier inchangé, Git ne relance
   pas le filtre : `git add --renormalize` le force.
+- **Complément :** le filtre fusionne aussi les morceaux consécutifs d'une même
+  sortie texte. Jupyter reçoit un `print` tantôt en un morceau, tantôt en
+  deux : sans cette fusion, deux exécutions identiques donnaient deux fichiers
+  différents. Le tableau des grilles n'utilise plus le `Styler` de pandas, qui
+  génère des identifiants aléatoires à chaque exécution. Vérifié : deux
+  exécutions successives donnent exactement la même version enregistrée, et le
+  texte affiché des 106 autres cellules est inchangé.
 - **Alternatives écartées :** les laisser (sans danger mais bruyant) ;
   nettoyer à la main avant chaque commit (oubli possible) ; outil externe
   (nbstripout, dépendance supplémentaire).
