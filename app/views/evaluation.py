@@ -124,7 +124,8 @@ position = st.slider(
 # le premier affichage correspond alors exactement au tableau des métriques.
 threshold = recommended if position == round(recommended, 3) else position
 st.caption(
-    f"Seuil appliqué : {threshold:.4f} · recommandé (F1 maximal) : {recommended:.4f} · KS : {ks_threshold:.4f}"
+    f"Seuil appliqué : {threshold:.4f} · recommandé (F1 maximal) : {recommended:.4f} · "
+    f"KS : {ks_threshold:.4f} (seuils choisis sur l'entraînement)"
 )
 
 current = metrics_at_threshold(y_test, probas[name], threshold)
@@ -147,7 +148,9 @@ col_ks, col_cal = st.columns(2)
 col_ks.plotly_chart(ks_figure(y_test, probas[name], CLASS_NAMES))
 col_ks.caption(
     "Part cumulée des clients dont le score est inférieur à chaque valeur. Le KS est le plus grand écart "
-    "entre bons payeurs et défauts : plus il est grand, mieux le score sépare les deux groupes."
+    "entre bons payeurs et défauts : plus il est grand, mieux le score sépare les deux groupes. "
+    f"Le score indiqué est celui de l'écart maximal **sur le test** ; le seuil du KS appliqué plus haut "
+    f"({ks_threshold:.3f}) a été choisi sur l'entraînement."
 )
 calibration = calibration_table(y_test, probas[name])
 report = holdout_report(y_test, probas[name], recommended)
