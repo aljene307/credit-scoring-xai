@@ -14,8 +14,8 @@ vous pouvez aussi importer votre propre fichier CSV.
 
 **Modules :**
 1. **Données** : aperçu, statistiques, classes, graphiques exploratoires.
+2. **Préparation** : choix des variables, séparation entraînement / test, prétraitement.
 
-Les modules suivants (préparation, modélisation, évaluation, explicabilité, API) sont en cours
-de développement.
+Les modules suivants (modélisation, évaluation, explicabilité, API) sont en cours de développement.
 """
 )

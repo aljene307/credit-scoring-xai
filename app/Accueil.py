@@ -8,6 +8,7 @@ navigation = st.navigation(
     [
         st.Page("views/accueil.py", title="Accueil", default=True),
         st.Page("views/donnees.py", title="1. Données"),
+        st.Page("views/preparation.py", title="2. Préparation"),
     ]
 )
 navigation.run()
