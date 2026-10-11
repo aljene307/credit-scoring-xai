@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "credit_scoring"
+version = "0.1.0"
+description = "Scoring de crédit explicable : données, modèles, évaluation, SHAP et LIME."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Mohamed Aljene" }]
+# Les versions des dépendances sont fixées dans requirements.txt.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

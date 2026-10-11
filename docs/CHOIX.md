@@ -33,6 +33,31 @@ données) ou **en attente** (sera tranché à une étape ultérieure).
 - **Options :** regrouper dans « autres », conserver telles quelles, supprimer
   les lignes concernées.
 
+### C05. Cible renommée DEFAULT — retenu
+- **Choix :** la colonne `Y` devient `DEFAULT` (1 = défaut de paiement le mois
+  suivant, 0 = pas de défaut).
+- **Raison :** nom explicite dans les graphiques et les explications.
+- **Alternative écartée :** garder `Y`, ou le nom long d'origine
+  (« default payment next month »).
+
+### C06. Cache local des données au format Parquet — retenu
+- **Choix :** au premier lancement, le jeu est téléchargé puis enregistré dans
+  `data/` (ignoré par Git) ; les lancements suivants lisent ce fichier.
+- **Raison :** le serveur de l'UCI est parfois lent ou indisponible. Parquet
+  conserve les types de colonnes et se lit vite ; pyarrow est déjà requis par
+  Streamlit.
+- **Alternative écartée :** CSV (lisible à l'œil mais perd les types) ;
+  télécharger à chaque lancement.
+
+### C07. Notebook commité avec ses sorties — retenu
+- **Choix :** le notebook est exécuté en entier puis commité avec ses
+  graphiques et ses chiffres, après contrôle des chemins locaux dans les
+  sorties.
+- **Raison :** les résultats sont lisibles directement sur GitHub, sans
+  réexécution.
+- **Alternative écartée :** notebook sans sorties (plus léger, mais il faut
+  le réexécuter pour voir les résultats).
+
 ---
 
 ## Préparation des données
@@ -174,3 +199,28 @@ données) ou **en attente** (sera tranché à une étape ultérieure).
 ### A07. Licence MIT pour le code — retenu
 - **Raison :** licence simple et permissive. Le jeu de données reste sous sa
   propre licence CC BY 4.0, citée dans le README.
+
+### A08. Dépendances à versions exactes, séparées en deux fichiers — retenu
+- **Choix :** `requirements.txt` (application, versions exactes `==`) et
+  `requirements-dev.txt` (tests et notebook, inclut le premier).
+- **Raison :** un modèle sauvegardé avec une version de scikit-learn peut ne
+  pas se recharger avec une autre ; l'application déployée doit utiliser les
+  mêmes versions que l'environnement d'entraînement. Les outils de
+  développement n'ont pas à être installés au déploiement.
+- **Alternatives écartées :** versions non fixées (résultats non
+  reproductibles) ; Poetry ou uv (Streamlit Community Cloud lit
+  `requirements.txt` directement).
+
+### A09. Installation du paquet `credit_scoring` sur Streamlit Community Cloud — à tester au déploiement
+- **Choix :** le paquet est décrit dans `pyproject.toml` et installé par la
+  ligne `-e .` à la fin de `requirements.txt`. Streamlit Community Cloud
+  installe `requirements.txt` depuis la racine du dépôt, donc `.` désigne le
+  projet lui-même.
+- **Raison :** un seul fichier lu par Streamlit Cloud installe à la fois les
+  bibliothèques et notre code ; localement, `pip install -r requirements-dev.txt`
+  fait de même (vérifié : import réussi depuis un autre dossier).
+- **Solutions de repli, dans l'ordre :** remplacer `-e .` par `.`
+  (installation non modifiable) ; en dernier recours, ajouter `src/` au
+  chemin d'import au début de l'application.
+- **Alternative écartée :** modifier `sys.path` dans chaque fichier (fragile,
+  dépend du dossier de lancement).

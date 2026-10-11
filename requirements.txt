@@ -1,0 +1,11 @@
+# Dépendances de l'application, versions exactes.
+# Streamlit Community Cloud installe ce fichier depuis la racine du dépôt.
+numpy==2.4.6
+pandas==3.0.6
+plotly==7.1.0
+pyarrow==25.0.1
+streamlit==1.65.0
+ucimlrepo==0.0.7
+
+# Paquet du projet (src/credit_scoring), installé en mode modifiable.
+-e .
