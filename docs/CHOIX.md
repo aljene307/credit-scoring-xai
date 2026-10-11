@@ -446,15 +446,58 @@ ou bruit dans les étiquettes.
 - **Critères écartés :** rappel minimal imposé (chiffre à fixer par le
   métier) ; coût métier (coûts d'erreur non fournis par le jeu).
 
-### E03. Courbe de calibration du modèle de référence — prévu (étape 4)
+### E03. Courbe de calibration du modèle de référence — retenu
 - **Choix :** tracer, pour XGBoost, le taux de défaut observé en fonction de
-  la probabilité prédite (clients regroupés par tranches de probabilité), avec
-  la diagonale « probabilité = taux observé ».
+  la probabilité prédite, sur **10 tranches de même effectif** (600 clients du
+  test chacune), avec la diagonale « probabilité = taux observé » et le score
+  de Brier. Aucune correction sans accord explicite.
 - **Raison :** l'AUC ne dit rien de la justesse des probabilités ; le décideur
   lira « 35 % de risque » comme un vrai risque. La moyenne hors pli (22,05 %
   pour 22,12 % observés) ne vérifie la calibration qu'en moyenne, pas tranche
-  par tranche.
-- **Alternative écartée :** se contenter de la moyenne des probabilités.
+  par tranche. Des tranches de même effectif donnent des points stables.
+- **Alternatives écartées :** se contenter de la moyenne des probabilités ;
+  tranches de même largeur (quelques dizaines de clients dans les tranches
+  élevées) ; recalibration automatique (modification du modèle, à décider
+  séparément).
+- **Résultat (test) :** écart moyen de 0,9 point entre probabilité moyenne et
+  taux observé, écart maximal de 2,4 points (tranche 5 : 13,6 % prédit,
+  16,0 % observé), soit au plus 1,8 écart-type d'échantillonnage : compatible
+  avec le hasard. Score de Brier 0,135, contre 0,172 pour un modèle naïf qui
+  prédirait 22,12 % pour tous (−21,5 %). **Aucune recalibration nécessaire.**
+
+### E04. Les quatre modèles évalués sur le test — retenu
+- **Choix :** les quatre modèles de référence sont évalués sur les 6 000
+  clients du test, chacun à son seuil F1 fixé à l'étape 3.
+- **Raison :** le modèle de référence étant déjà choisi (M07), le test ne sert
+  pas à choisir ; les quatre scores vérifient que le classement de la
+  validation croisée se confirme et permettent les courbes superposées.
+- **Alternative écartée :** évaluer XGBoost seul.
+- **Résultat :** AUC test 0,779 (XGBoost), 0,774 (Random Forest), 0,765
+  (arbre), 0,710 (régression logistique) ; même classement qu'en validation
+  croisée, avec une baisse de 0,005 à 0,017, chaque valeur de validation
+  croisée restant dans l'intervalle de confiance du test.
+
+### E05. Intervalles de confiance par bootstrap apparié — retenu
+- **Choix :** 1 000 tirages avec remise des 6 000 clients du test ; les mêmes
+  tirages pour les quatre modèles (bootstrap apparié), ce qui donne aussi un
+  intervalle pour l'écart d'AUC entre deux modèles.
+- **Raison :** 6 000 clients ne sont qu'un échantillon ; sans intervalle, on
+  risque d'interpréter un écart de quelques millièmes comme réel.
+- **Alternative écartée :** pas d'intervalle.
+- **Résultat :** XGBoost 0,779 [0,765 ; 0,795]. Écart XGBoost − Random Forest :
+  +0,005 [−0,000 ; +0,009], l'intervalle contient 0 (égalité confirmée) ;
+  XGBoost − arbre : +0,014 [+0,007 ; +0,020] ; XGBoost − régression
+  logistique : +0,069 [+0,056 ; +0,082].
+
+### E06. Phrase de synthèse pour le décideur sous la matrice de confusion — retenu
+- **Choix :** sous la matrice de confusion, une phrase mise à jour avec le
+  curseur donne le nombre de clients signalés, le nombre de vrais défauts
+  parmi eux et le nombre de défauts manqués.
+- **Raison :** un décideur non spécialiste lit des effectifs plus facilement
+  qu'une précision ou un rappel.
+- **Exemple (XGBoost, seuil F1) :** « Sur 6 000 clients, le modèle en signale
+  1 423 comme risqués : 743 d'entre eux font réellement défaut (52 %). Il
+  manque 584 défauts sur 1 327. »
 
 ### E02. Métriques — retenu
 - **Choix :** AUC-ROC, précision, rappel et F1 sur la classe « défaut »,
