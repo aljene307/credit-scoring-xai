@@ -23,6 +23,19 @@ cible : défaut de paiement le mois suivant.
 Le jeu de données est téléchargé automatiquement par l'application ; il n'est
 pas inclus dans ce dépôt.
 
+## Contribuer au notebook
+
+Les heures d'exécution des cellules sont retirées automatiquement à chaque
+`git add` d'un notebook, grâce à un filtre Git. Ce réglage est local : après
+avoir cloné le dépôt et créé l'environnement virtuel `.venv`, lancez une fois :
+
+```powershell
+git config filter.notebook-sans-horodatage.clean ".venv/Scripts/python.exe -I scripts/nettoyer_notebook.py"
+git config filter.notebook-sans-horodatage.required true
+```
+
+Sous Linux ou macOS, remplacez `.venv/Scripts/python.exe` par `.venv/bin/python`.
+
 ## Décisions de conception
 
 Voir [docs/CHOIX.md](docs/CHOIX.md).

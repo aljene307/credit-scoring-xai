@@ -4,3 +4,7 @@
 *.jpg binary
 *.pdf binary
 *.joblib binary
+
+# Notebooks : horodatages d'exécution retirés à chaque git add
+# (filtre local, voir scripts/nettoyer_notebook.py et le README).
+*.ipynb filter=notebook-sans-horodatage

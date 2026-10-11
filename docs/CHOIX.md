@@ -379,6 +379,23 @@ ou bruit dans les étiquettes.
   reproductibles) ; Poetry ou uv (Streamlit Community Cloud lit
   `requirements.txt` directement).
 
+### A10. Horodatages du notebook retirés automatiquement — retenu
+- **Choix :** un filtre Git « clean » (`.gitattributes` + réglage local
+  `git config`) passe chaque `.ipynb` dans `scripts/nettoyer_notebook.py` à
+  chaque `git add` ; seule la clé `execution` (heures d'exécution des
+  cellules) est retirée. Le réglage `required` fait échouer `git add` si le
+  filtre ne peut pas s'exécuter.
+- **Raison :** ces horodatages changent à chaque réexécution sans rien
+  apporter (bruit dans l'historique) et indiqueraient publiquement les heures
+  de travail. Vérifié : mêmes sources, sorties et images (empreinte
+  identique), format valide, noyau conservé.
+- **Limite :** le réglage `git config` est local ; il faut le refaire après un
+  clonage (commande dans le README). Pour un fichier inchangé, Git ne relance
+  pas le filtre : `git add --renormalize` le force.
+- **Alternatives écartées :** les laisser (sans danger mais bruyant) ;
+  nettoyer à la main avant chaque commit (oubli possible) ; outil externe
+  (nbstripout, dépendance supplémentaire).
+
 ### A09. Installation du paquet `credit_scoring` sur Streamlit Community Cloud — à tester au déploiement
 - **Choix :** le paquet est décrit dans `pyproject.toml` et installé par la
   ligne `-e .` à la fin de `requirements.txt`. Streamlit Community Cloud
