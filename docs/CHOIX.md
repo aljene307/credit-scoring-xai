@@ -27,11 +27,81 @@ données) ou **en attente** (sera tranché à une étape ultérieure).
 - **Raison :** graphiques et explications lisibles par un décideur.
 - **Alternative écartée :** garder X1…X23 (explications incompréhensibles).
 
-### C04. Modalités non documentées de EDUCATION, MARRIAGE et PAY_* — à confirmer
+### C04. Modalités non documentées : vérification puis recodage — retenu
 - **Choix :** vérifier d'abord leur présence et leur fréquence sur les vraies
-  données, puis décider du recodage.
-- **Options :** regrouper dans « autres », conserver telles quelles, supprimer
-  les lignes concernées.
+  données (fait, voir le notebook, section 1), puis décider (R1 à R5).
+- **Mise en œuvre :** le recodage applique une règle fixe ligne par ligne et
+  n'apprend rien des données ; il est donc appliqué après chargement, avant
+  la séparation entraînement / test, sans risque de fuite. Le cache conserve
+  les données brutes.
+
+**Codes officiels (UCI) :** SEX 1 = homme, 2 = femme ; EDUCATION 1 = 3e cycle,
+2 = université, 3 = lycée, 4 = autres ; MARRIAGE 1 = marié, 2 = célibataire,
+3 = autres ; PAY -1 = payé à temps, 1…9 = mois de retard.
+
+#### R1. EDUCATION : codes 0, 5 et 6 regroupés avec 4, libellé « Autres ou inconnu » — retenu
+- **Constat :** 0 (14 clients, 0 % de défaut), 5 (280 ; 6,4 %), 6 (51 ; 15,7 %),
+  soit 345 clients (1,2 %) ; le code 4 « autres » compte 123 clients (5,7 %).
+- **Sources :** l'UCI ne documente pas 0, 5 et 6. La description du même jeu
+  sur Kaggle (« Default of Credit Card Clients Dataset », UCI Machine
+  Learning, <https://www.kaggle.com/datasets/uciml/default-of-credit-card-clients-dataset>)
+  indique 5 = unknown et 6 = unknown ; le code 0 n'est documenté nulle part.
+- **Raison :** codes sans sens officiel, effectifs trop faibles pour être
+  appris (le code 0 peut manquer de certains plis de validation croisée),
+  risque proche de celui de « autres ». Le décideur retrouve les 4 modalités
+  officielles.
+- **Alternatives écartées :** modalité « inconnu » séparée ; garder les
+  7 codes ; supprimer les 345 lignes.
+
+#### R2. MARRIAGE : code 0 regroupé avec 3 (« autres ») — retenu
+- **Constat :** code 0 = 54 clients, 5 défauts (9,3 %) ; code 3 = 323 clients,
+  84 défauts (26,0 %).
+- **Test statistique :** test exact de Fisher bilatéral, code 0 contre code 3 :
+  **p = 0,0055**. L'écart est statistiquement significatif au seuil de 5 %.
+  Intervalles de confiance à 95 % (Wilson) : code 0 [4,0 % ; 19,9 %],
+  code 3 [21,5 % ; 31,1 %].
+- **Raison :** le code 0 n'a pas de sens documenté, et 54 clients sur 30 000
+  (0,18 %) ne peuvent pas peser sur le modèle. Le regroupement n'est pas
+  justifié par l'absence d'écart : l'écart existe.
+- **Conséquence :** le taux de défaut de « autres » passe de 26,0 % à 23,6 %
+  (89 / 377).
+- **Alternatives écartées :** modalité « inconnu » séparée ; supprimer les
+  54 lignes.
+
+#### R3. PAY_* : aucun recodage — retenu
+- **Constat :** -2 et 0 sont fréquents (PAY_0 : 2 759 et 14 737 clients).
+  Interprétation la plus répandue : -2 = pas d'utilisation, -1 = payé en
+  totalité, 0 = crédit renouvelable (minimum payé). Indice dans les données :
+  32,7 % des PAY_0 = -2 ont une facture nulle ou négative, contre 0 % des
+  PAY_0 = 0. Taux de défaut selon PAY_0 : -2 : 13,2 % ; -1 : 16,8 % ;
+  0 : 12,8 % ; 1 : 33,9 % ; 2 : 69,1 %.
+- **Raison :** valeurs conservées de -2 à 8 ; l'application affiche un libellé
+  pour chaque code. Ramener -2 et -1 à 0 perdrait de l'information et
+  imposerait une interprétation non officielle.
+- **Limite à citer :** la valeur 1 concerne 3 688 clients en septembre (PAY_0)
+  mais presque aucun les autres mois (28, 4, 2, 0, 0) : le codage a
+  probablement changé d'un mois à l'autre.
+- **Alternatives écartées :** ramener -2, -1 et 0 à 0 ; séparer en deux
+  variables (statut, mois de retard).
+
+#### R4. Clients aux variables identiques conservés — retenu
+- **Constat :** 52 groupes (108 lignes) ont les mêmes 23 variables avec des
+  identifiants différents, dont 21 groupes avec des cibles différentes ;
+  ce sont surtout des comptes inactifs.
+- **Raison :** clients distincts au profil identique (0,36 % des lignes).
+- **Alternative écartée :** supprimer les doublons exacts.
+
+#### R5. Montants négatifs et dépassements de plafond conservés — retenu
+- **Constat :** environ 600 à 690 factures négatives par mois (soldes
+  créditeurs, minimum -165 580) ; 2 115 clients ont une facture supérieure à
+  leur plafond.
+- **Raison :** situations bancaires réelles (trop-perçu, intérêts et frais).
+- **Alternative écartée :** plafonner ou supprimer ces valeurs.
+
+**Observation pour l'analyse critique :** 795 clients ont toutes leurs
+factures et tous leurs paiements à 0, et 37,6 % d'entre eux font défaut
+(contre 22,1 % en moyenne) : définition du défaut plus large qu'un impayé,
+ou bruit dans les étiquettes.
 
 ### C05. Cible renommée DEFAULT — retenu
 - **Choix :** la colonne `Y` devient `DEFAULT` (1 = défaut de paiement le mois
@@ -150,6 +220,15 @@ données) ou **en attente** (sera tranché à une étape ultérieure).
 - **Raison :** un GridSearch complet sur 30 000 lignes prend plusieurs minutes
   et dépasse les ressources de Streamlit Community Cloud.
 - **Alternative écartée :** tout entraîner à chaque ouverture de l'application.
+
+### M05. Relation non linéaire entre PAY_0 et le risque — à vérifier avec les résultats
+- **Constat :** le taux de défaut est plat de PAY_0 = -2 à 0 (13 à 17 %), puis
+  saute à 1 (33,9 %) et à 2 (69,1 %).
+- **Conséquence attendue :** la régression logistique suppose un effet
+  linéaire de PAY_0 sur le logit du risque ; elle peut donc être désavantagée
+  par rapport aux arbres, qui découpent librement les seuils.
+- **À vérifier à l'étape 3 :** comparer les performances, et regarder la forme
+  de l'effet de PAY_0 dans les graphiques de dépendance SHAP.
 
 ---
 

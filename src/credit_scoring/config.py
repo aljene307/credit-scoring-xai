@@ -53,3 +53,22 @@ CATEGORICAL_FEATURES = ["SEX", "EDUCATION", "MARRIAGE"]
 PAY_STATUS_FEATURES = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
 BILL_FEATURES = [f"BILL_AMT{i}" for i in range(1, 7)]
 PAY_AMT_FEATURES = [f"PAY_AMT{i}" for i in range(1, 7)]
+
+# Recodage des modalités non documentées (choix R1 et R2).
+RECODING = {
+    "EDUCATION": {0: 4, 5: 4, 6: 4},
+    "MARRIAGE": {0: 3},
+}
+
+# Libellés affichés dans l'application (codes officiels UCI, après recodage).
+LABELS = {
+    "SEX": {1: "Homme", 2: "Femme"},
+    "EDUCATION": {1: "3e cycle", 2: "Université", 3: "Lycée", 4: "Autres ou inconnu"},
+    "MARRIAGE": {1: "Marié", 2: "Célibataire", 3: "Autres"},
+}
+PAY_STATUS_LABELS = {
+    -2: "Pas d'utilisation",
+    -1: "Payé en totalité",
+    0: "Crédit renouvelable (minimum payé)",
+    **{k: f"Retard de {k} mois" for k in range(1, 10)},
+}

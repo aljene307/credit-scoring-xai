@@ -63,6 +63,38 @@ def test_load_credit_data_writes_then_reads_cache(tmp_path, monkeypatch):
     assert second.index.name == ID_COL
 
 
+def make_clean_frame() -> pd.DataFrame:
+    """Faux tableau aux noms lisibles, avec toutes les modalités rencontrées."""
+    return pd.DataFrame(
+        {
+            "EDUCATION": [0, 1, 2, 3, 4, 5, 6],
+            "MARRIAGE": [0, 1, 2, 3, 1, 2, 3],
+            "PAY_0": [-2, -1, 0, 1, 2, 8, 0],
+            "LIMIT_BAL": [10_000, 20_000, 30_000, 40_000, 50_000, 60_000, 70_000],
+        }
+    )
+
+
+def test_recode_undocumented_groups_education_codes():
+    recoded = data.recode_undocumented(make_clean_frame())
+    assert recoded["EDUCATION"].tolist() == [4, 1, 2, 3, 4, 4, 4]
+    assert set(recoded["EDUCATION"]) == {1, 2, 3, 4}
+
+
+def test_recode_undocumented_groups_marriage_zero():
+    recoded = data.recode_undocumented(make_clean_frame())
+    assert recoded["MARRIAGE"].tolist() == [3, 1, 2, 3, 1, 2, 3]
+
+
+def test_recode_undocumented_leaves_other_columns_and_input_unchanged():
+    original = make_clean_frame()
+    snapshot = original.copy()
+    recoded = data.recode_undocumented(original)
+    pd.testing.assert_frame_equal(original, snapshot)  # pas de modification sur place
+    pd.testing.assert_series_equal(recoded["PAY_0"], original["PAY_0"])
+    pd.testing.assert_series_equal(recoded["LIMIT_BAL"], original["LIMIT_BAL"])
+
+
 def test_load_credit_data_refresh_downloads_again(tmp_path, monkeypatch):
     calls = []
 

@@ -9,6 +9,7 @@ from credit_scoring.config import (
     COLUMN_NAMES,
     FEATURE_NAMES,
     ID_COL,
+    RECODING,
     UCI_DATASET_ID,
 )
 
@@ -71,3 +72,16 @@ def load_credit_data(cache_path: Path = CACHE_FILE, refresh: bool = False) -> pd
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(cache_path)
     return df
+
+
+def recode_undocumented(df: pd.DataFrame) -> pd.DataFrame:
+    """Regroupe les modalités non documentées (EDUCATION 0/5/6 -> 4, MARRIAGE 0 -> 3).
+
+    Règle fixe appliquée ligne par ligne : elle n'apprend rien des données et
+    peut donc être appliquée avant la séparation entraînement / test.
+    Les PAY_* ne sont pas modifiées (choix R3).
+    """
+    recoded = df.copy()
+    for col, mapping in RECODING.items():
+        recoded[col] = recoded[col].replace(mapping)
+    return recoded
