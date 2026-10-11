@@ -2,7 +2,6 @@
 
 from math import prod
 
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -43,37 +42,54 @@ def build_pipeline(name: str, numeric: list[str], categorical: list[str]) -> Pip
     return Pipeline([("pretraitement", preprocessor), (STEP, make_estimator(name))])
 
 
-def class_ratio(y_train: pd.Series) -> float:
-    """Nombre de bons payeurs par défaut : valeur « pondérée » de scale_pos_weight."""
-    return round(float((y_train == 0).sum() / (y_train == 1).sum()), 2)
+def default_grid(name: str) -> dict:
+    """Grille de référence, sans le préfixe du Pipeline (choix M06).
 
-
-def default_grid(name: str, y_train: pd.Series) -> dict:
-    """Grille de référence, sans le préfixe du Pipeline (choix M06)."""
+    Pas de pondération des classes (choix M03) : elle n'améliorait pas l'AUC des
+    meilleures combinaisons et faussait les probabilités. Les grilles de l'arbre
+    et de XGBoost ont été prolongées pour que les meilleures valeurs ne soient
+    plus en bord de grille.
+    """
     grids = {
-        "logreg": {"C": [0.01, 0.1, 1, 10], "class_weight": [None, "balanced"]},
+        "logreg": {"C": [0.01, 0.1, 1, 10]},
         "arbre": {
-            "max_depth": [3, 5, 8, 12],
-            "min_samples_leaf": [1, 20, 100],
-            "class_weight": [None, "balanced"],
+            "max_depth": [3, 5, 8, 12, 16, 20],
+            "min_samples_leaf": [1, 20, 50, 100, 200, 400, 800, 1600],
         },
         "random_forest": {
             "max_depth": [8, 12, None],
             "min_samples_leaf": [1, 10],
             "max_features": ["sqrt", 0.5],
-            "class_weight": [None, "balanced_subsample"],
         },
+        # Centrée sur l'optimum d'une première grille prolongée (500 arbres, taux 0,02,
+        # profondeur 4, sous-échantillon 0,6) : une valeur de chaque côté.
         "xgboost": {
-            "n_estimators": [200, 400],
-            "learning_rate": [0.05, 0.1],
-            "max_depth": [3, 5],
-            "subsample": [0.8, 1.0],
-            "scale_pos_weight": [1, class_ratio(y_train)],
+            "n_estimators": [300, 500, 800],
+            "learning_rate": [0.01, 0.02, 0.03],
+            "max_depth": [3, 4, 5],
+            "subsample": [0.4, 0.6, 0.8],
         },
     }
     if name not in grids:
         raise ValueError(f"Modèle inconnu : {name}")
     return grids[name]
+
+
+def grid_edges(grid: dict, best_params: dict) -> list[str]:
+    """Hyperparamètres numériques dont la meilleure valeur est la plus petite ou la
+    plus grande de la grille : le vrai optimum est peut-être au-delà.
+
+    None (profondeur sans limite) compte comme la plus grande valeur.
+    """
+    edges = []
+    for key, values in grid.items():
+        numeric = [v for v in values if v is not None]
+        if len(values) < 2 or not all(isinstance(v, (int, float)) for v in numeric):
+            continue
+        ordered = sorted(numeric) + ([None] if None in values else [])
+        if best_params[key] in (ordered[0], ordered[-1]):
+            edges.append(key)
+    return edges
 
 
 def to_pipeline_grid(grid: dict) -> dict:

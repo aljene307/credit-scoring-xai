@@ -18,6 +18,7 @@ from credit_scoring.models import (
     STEP,
     build_pipeline,
     default_grid,
+    grid_edges,
     n_combinations,
     to_pipeline_grid,
 )
@@ -60,7 +61,7 @@ def train_model(
     Retourne la recherche ajustée (meilleur modèle réentraîné sur tout
     l'entraînement) et un résumé sérialisable en JSON.
     """
-    grid = grid if grid is not None else default_grid(name, y_train)
+    grid = grid if grid is not None else default_grid(name)
     search = GridSearchCV(
         build_pipeline(name, numeric, categorical),
         to_pipeline_grid(grid),
@@ -82,15 +83,18 @@ def train_model(
 
     best = search.best_index_
     results = search.cv_results_
+    best_params = {key.removeprefix(f"{STEP}__"): _plain(value) for key, value in search.best_params_.items()}
     summary = {
         "modele": name,
         "libelle": MODEL_LABELS[name],
         "combinaisons": n_combinations(grid),
         "entrainements": n_combinations(grid) * CV_FOLDS,
         "duree_s": round(search_seconds, 1),
-        "meilleurs_hyperparametres": {
-            key.removeprefix(f"{STEP}__"): _plain(value) for key, value in search.best_params_.items()
-        },
+        "meilleurs_hyperparametres": best_params,
+        "bord_de_grille": grid_edges(grid, best_params),
+        # À comparer au taux réel : une moyenne très différente signale des probabilités faussées.
+        "proba_moyenne_hors_pli": float(oof_proba.mean()),
+        "taux_reel_entrainement": float(y_train.mean()),
         "validation_croisee": {
             metric: {
                 "moyenne": float(results[f"mean_test_{metric}"][best]),

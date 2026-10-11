@@ -275,12 +275,30 @@ ou bruit dans les étiquettes.
 - **Alternatives écartées :** F1 (dépend du seuil) ; PR-AUC (affichée mais pas
   utilisée pour le réglage) ; recherche aléatoire (consigne : GridSearchCV).
 
-### M03. Pondération des classes testée dans la grille — retenu
-- **Choix :** `class_weight ∈ {None, "balanced"}` (scikit-learn) et
-  `scale_pos_weight ∈ {1, n_négatifs / n_positifs}` (XGBoost) font partie de
-  la grille ; GridSearchCV décide.
-- **Raison :** environ 22 % de défauts ; on laisse la validation croisée
-  trancher plutôt que d'imposer la pondération.
+### M03. Pondération des classes : testée, puis retirée des modèles finaux — retenu
+- **Premier choix (testé) :** `class_weight ∈ {None, "balanced"}` (scikit-learn)
+  et `scale_pos_weight ∈ {1, n_négatifs / n_positifs}` (XGBoost) dans la grille ;
+  GridSearchCV décide.
+- **Décision finale :** les quatre modèles finaux sont entraînés **sans
+  pondération** (grilles de M06 sans ces hyperparamètres).
+- **Raison de la décision finale :** la pondération n'apporte rien de mesurable
+  sur les meilleures combinaisons (au plus +0,0004 d'AUC, contre 0,005 à 0,011
+  de variation d'un pli à l'autre) et elle fausse les probabilités (elles ne
+  sont plus des probabilités de défaut).
+- **Preuve (premier GridSearch, validation croisée sur l'entraînement) :**
+
+  | Modèle | Meilleure AUC avec pondération | Meilleure AUC sans | Écart |
+  |---|---|---|---|
+  | Régression logistique | 0,7276 | 0,7272 | +0,0004 |
+  | Arbre de décision | 0,7598 | 0,7665 | −0,0066 |
+  | Random Forest | 0,7849 | 0,7845 | +0,0004 |
+  | XGBoost | 0,7829 | 0,7828 | +0,0001 |
+
+- **Exception à connaître :** pour un arbre de profondeur 3, la pondération
+  améliore nettement l'AUC (0,7486 contre 0,7328, soit +0,016) : avec 8 feuilles
+  au plus, elle change les questions posées par l'arbre, pas seulement les
+  probabilités. Cela ne concerne pas les modèles finaux, mais compte pour le
+  coût d'un arbre lisible (M08).
 - **Effet à connaître :** la pondération gonfle les probabilités prédites
   (moyenne proche de 50 % au lieu de 22 %). Elle change peu le classement des
   clients, donc peu l'AUC, mais les probabilités ne sont plus des
@@ -301,11 +319,11 @@ ou bruit dans les étiquettes.
 - **Alternative écartée :** tout entraîner à chaque ouverture de l'application.
 
 ### M05. Relation non linéaire entre PAY_0 et le risque — confirmé en partie (étape 3)
-- **Résultat :** AUC de validation 0,728 pour la régression logistique contre
-  0,767 à 0,785 pour les trois modèles à base d'arbres. Le meilleur `C` est la
-  plus grande valeur de la grille (régularisation la plus faible) et l'AUC
-  varie de moins de 0,002 entre `C` = 0,1 et 10 : le modèle n'est pas freiné
-  par la régularisation mais limité par sa forme linéaire. Confirmation à
+- **Résultat :** AUC de validation 0,727 pour la régression logistique contre
+  0,771 à 0,786 pour les trois modèles à base d'arbres (grilles finales). Le
+  meilleur `C` est la plus grande valeur de la grille (régularisation la plus
+  faible) et l'AUC varie de moins de 0,002 entre `C` = 0,1 et 10 : le modèle
+  n'est pas freiné par la régularisation mais limité par sa forme linéaire. Confirmation à
   chercher dans les graphiques de dépendance SHAP (étape 5).
 - **Constat :** le taux de défaut est plat de PAY_0 = -2 à 0 (13 à 17 %), puis
   saute à 1 (33,9 %) et à 2 (69,1 %).
@@ -315,28 +333,84 @@ ou bruit dans les étiquettes.
 - **À vérifier à l'étape 3 :** comparer les performances, et regarder la forme
   de l'effet de PAY_0 dans les graphiques de dépendance SHAP.
 
-### M06. Grilles d'hyperparamètres de référence — retenu
+### M06. Grilles d'hyperparamètres — retenu
+**Grilles finales** (sans pondération, M03) :
+
 | Modèle | Grille | Combinaisons |
 |---|---|---|
-| Régression logistique | `C` ∈ {0,01 ; 0,1 ; 1 ; 10}, `class_weight` ∈ {aucun, balanced} | 8 |
-| Arbre de décision | `max_depth` ∈ {3, 5, 8, 12}, `min_samples_leaf` ∈ {1, 20, 100}, `class_weight` ∈ {aucun, balanced} | 24 |
-| Random Forest (300 arbres) | `max_depth` ∈ {8, 12, sans limite}, `min_samples_leaf` ∈ {1, 10}, `max_features` ∈ {sqrt, 0,5}, `class_weight` ∈ {aucun, balanced_subsample} | 24 |
-| XGBoost | `n_estimators` ∈ {200, 400}, `learning_rate` ∈ {0,05 ; 0,1}, `max_depth` ∈ {3, 5}, `subsample` ∈ {0,8 ; 1}, `scale_pos_weight` ∈ {1 ; bons / défauts} | 32 |
+| Régression logistique | `C` ∈ {0,01 ; 0,1 ; 1 ; 10} | 4 |
+| Arbre de décision | `max_depth` ∈ {3, 5, 8, 12, 16, 20}, `min_samples_leaf` ∈ {1, 20, 50, 100, 200, 400, 800, 1600} | 48 |
+| Random Forest (300 arbres) | `max_depth` ∈ {8, 12, sans limite}, `min_samples_leaf` ∈ {1, 10}, `max_features` ∈ {sqrt, 0,5} | 12 |
+| XGBoost | `n_estimators` ∈ {300, 500, 800}, `learning_rate` ∈ {0,01 ; 0,02 ; 0,03}, `max_depth` ∈ {3, 4, 5}, `subsample` ∈ {0,4 ; 0,6 ; 0,8} | 81 |
 
-- **Raison :** chaque grille croise un réglage de complexité (profondeur,
-  régularisation, nombre d'arbres) avec la pondération des classes (M03).
-  Le nombre d'arbres de Random Forest est fixé à 300 : en ajouter ne cause
-  pas de surapprentissage, seulement un coût en temps.
-- **Temps estimé** à partir de mesures sur le PC de développement (12 cœurs
-  logiques) : 7 à 15 minutes pour les 88 combinaisons × 5 plis.
-  **Temps réel :** régression logistique 10 s, arbre 8 s, Random Forest
-  749 s (12,5 min, au-dessus de l'estimation de 5 à 10 min), XGBoost 74 s ;
-  environ 14 minutes au total.
+- **Raison :** chaque grille fait varier la complexité du modèle (profondeur,
+  régularisation, nombre d'arbres, vitesse d'apprentissage). Le nombre
+  d'arbres de Random Forest est fixé à 300 : en ajouter ne cause pas de
+  surapprentissage, seulement un coût en temps.
+- **Historique :**
+  1. Première grille (avec pondération, 88 combinaisons) : plusieurs
+     meilleures valeurs en bord de grille (arbre : profondeur 12 ;
+     XGBoost : 200 arbres, taux 0,05, profondeur 3).
+  2. Grilles de l'arbre et de XGBoost prolongées (sans pondération) : l'arbre
+     reste en bord (`min_samples_leaf` = 400, l'AUC monte encore de 0,7691 à
+     0,7707 entre 200 et 400) ; XGBoost a ses 4 réglages en bord.
+  3. Second prolongement : l'arbre n'a plus aucun bord (profondeur 16 entre
+     12 et 20 ; feuille 400 entre 200 et 800). XGBoost reste en bord sur 3
+     réglages (taux 0,01, profondeur 5, sous-échantillon 0,4).
+- **Bords restants, mesurés :**
+  - XGBoost : surface presque plate, l'optimum glisse le long d'une crête.
+    Écart entre la valeur au bord et sa voisine : 0,0003 (taux), 0,0003
+    (profondeur), 0,0006 (sous-échantillon) ; les 10 meilleures combinaisons
+    tiennent en 0,0009, pour un écart-type entre plis de 0,0054.
+  - **Décision pour XGBoost : arrêt après le second prolongement.** Pousser
+    plus loin ferait gagner moins que le bruit entre plis, et choisir le
+    meilleur parmi des centaines de combinaisons presque égales rendrait le
+    score de validation légèrement trop optimiste. Limite citée telle quelle.
+    *Alternative écartée :* troisième prolongement (taux 0,005, profondeur 6
+    et 7, sous-échantillon 0,2 et 0,3), gain attendu inférieur à 0,001.
+  - Régression logistique : `C` = 10 ; AUC 0,7272 à `C` = 1 et à `C` = 10 (plat).
+  - Random Forest : profondeur sans limite et feuille 10 ; écarts de 0,001 et
+    0,0018 avec les valeurs voisines.
 - **Parallélisation :** GridSearchCV répartit les entraînements sur tous les
   cœurs ; Random Forest et XGBoost utilisent un seul cœur chacun pour ne pas
   se concurrencer.
+- **Temps réels** (PC de développement, 12 cœurs logiques) : régression
+  logistique 6 s, arbre 17 s, Random Forest 260 s, XGBoost 242 s. La première
+  estimation pour Random Forest (5 à 10 min avec 24 combinaisons) avait été
+  dépassée (12,5 min).
 - **Alternative écartée :** Random Forest allégé sans `max_features = 0,5`
-  (1 à 2 minutes au lieu de 5 à 10, mais une piste de réglage en moins).
+  (une piste de réglage en moins).
+
+### M07. Modèle de référence : XGBoost — retenu (choisi avant le test)
+- **Choix :** XGBoost est le modèle de référence de l'application et de
+  l'API. Il est choisi sur la validation croisée de l'entraînement, **avant**
+  toute utilisation du jeu de test, pour que l'évaluation finale ne serve pas
+  à choisir.
+- **Raisons :**
+  - meilleure AUC de validation (0,786, Gini 0,572), à égalité avec Random
+    Forest (0,785) : l'écart est 10 fois plus petit que la variation entre
+    plis ;
+  - fichier 30 fois plus léger que Random Forest (0,40 Mo contre 12,3 Mo) :
+    déploiement et chargement plus simples ;
+  - surapprentissage bien plus faible (AUC entraînement − validation : 0,045
+    contre 0,147 pour Random Forest) ;
+  - probabilités cohérentes avec le taux réel (moyenne hors pli 22,05 % pour
+    22,12 % de défauts) ;
+  - explications SHAP exactes et rapides pour les arbres de XGBoost.
+- **Alternatives écartées :** Random Forest (même performance, fichier lourd,
+  forte mémorisation) ; régression logistique (la plus interprétable, mais
+  0,059 d'AUC en moins) ; arbre de décision (lisible seulement à faible
+  profondeur, voir M08).
+
+### M08. Coût d'un arbre lisible (profondeur 3) — constat
+- **Mesure (validation croisée) :** meilleur arbre de profondeur 3 sans
+  pondération : AUC 0,734 (Gini 0,468) ; meilleur arbre toutes profondeurs :
+  0,771 ; XGBoost : 0,786 (Gini 0,572).
+- **Coût de la lisibilité :** −0,052 d'AUC par rapport à XGBoost, −0,037 par
+  rapport au meilleur arbre. Avec pondération (M03), l'arbre de profondeur 3
+  atteint 0,749 : coût réduit à −0,037 par rapport à XGBoost.
+- **Usage :** argument chiffré pour le compromis performance / interprétabilité
+  demandé dans le one-pager.
 
 ---
 
@@ -356,6 +430,16 @@ ou bruit dans les étiquettes.
   à chacun des deux seuils, pour comparaison.
 - **Critères écartés :** rappel minimal imposé (chiffre à fixer par le
   métier) ; coût métier (coûts d'erreur non fournis par le jeu).
+
+### E03. Courbe de calibration du modèle de référence — prévu (étape 4)
+- **Choix :** tracer, pour XGBoost, le taux de défaut observé en fonction de
+  la probabilité prédite (clients regroupés par tranches de probabilité), avec
+  la diagonale « probabilité = taux observé ».
+- **Raison :** l'AUC ne dit rien de la justesse des probabilités ; le décideur
+  lira « 35 % de risque » comme un vrai risque. La moyenne hors pli (22,05 %
+  pour 22,12 % observés) ne vérifie la calibration qu'en moyenne, pas tranche
+  par tranche.
+- **Alternative écartée :** se contenter de la moyenne des probabilités.
 
 ### E02. Métriques — retenu
 - **Choix :** AUC-ROC, précision, rappel et F1 sur la classe « défaut »,
@@ -405,15 +489,16 @@ ou bruit dans les étiquettes.
   | Fichier | Taille |
   |---|---|
   | `logreg.joblib` | 0,003 Mo |
-  | `arbre.joblib` | 0,011 Mo |
-  | `random_forest.joblib` | **17,2 Mo** (300 arbres sans limite de profondeur) |
-  | `xgboost.joblib` | 0,046 Mo |
-  | `resultats.json` + 4 `grille_*.parquet` | 0,05 Mo au total |
+  | `arbre.joblib` | 0,006 Mo |
+  | `random_forest.joblib` | **12,3 Mo** (300 arbres sans limite de profondeur) |
+  | `xgboost.joblib` | 0,40 Mo (500 arbres de profondeur 5) |
+  | `resultats.json` + 4 `grille_*.parquet` | environ 0,05 Mo |
 
-  Total : environ 17,3 Mo, dont 99,6 % pour Random Forest. GitHub refuse les
-  fichiers de plus de 100 Mo et avertit au-delà de 50 Mo : les quatre modèles
-  pourraient être commités. Un fichier binaire de 17 Mo alourdit cependant
-  l'historique à chaque nouvel entraînement.
+  Total : environ 12,8 Mo, dont 96 % pour Random Forest (17,2 Mo avec la
+  première grille). GitHub refuse les fichiers de plus de 100 Mo et avertit
+  au-delà de 50 Mo : les quatre modèles pourraient être commités. Un fichier
+  binaire de 12 Mo alourdit cependant l'historique à chaque nouvel
+  entraînement.
 - **À trancher au déploiement :** commiter les modèles, les réentraîner à la
   construction de l'image Docker, ou les héberger ailleurs.
 

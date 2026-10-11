@@ -79,6 +79,9 @@ def main() -> None:
         print(f"{summary['combinaisons']} combinaisons, {summary['entrainements']} entraînements, "
               f"{time.perf_counter() - start:.0f} s")
         print(f"meilleurs hyperparamètres : {summary['meilleurs_hyperparametres']}")
+        print(f"en bord de grille : {summary['bord_de_grille'] or 'aucun'} "
+              f"| probabilité moyenne {summary['proba_moyenne_hors_pli']:.2%} "
+              f"(taux réel {summary['taux_reel_entrainement']:.2%})")
         print(f"AUC validation {cv['roc_auc']['moyenne']:.4f} ± {cv['roc_auc']['ecart_type']:.4f} "
               f"| AUC entraînement {summary['auc_entrainement']:.4f} "
               f"| taille {summary['taille_octets'] / 1e6:.2f} Mo", flush=True)
