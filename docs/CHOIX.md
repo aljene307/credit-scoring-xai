@@ -445,6 +445,10 @@ ou bruit dans les étiquettes.
   à chacun des deux seuils, pour comparaison.
 - **Critères écartés :** rappel minimal imposé (chiffre à fixer par le
   métier) ; coût métier (coûts d'erreur non fournis par le jeu).
+- **Curseur de la page Évaluation :** pas de 0,001 ; sur la position du seuil
+  recommandé, la valeur exacte est appliquée (0,2685 pour XGBoost, et non son
+  arrondi 0,27, qui signalait 6 clients de moins). Le premier affichage
+  correspond ainsi exactement au tableau des métriques.
 
 ### E03. Courbe de calibration du modèle de référence — retenu
 - **Choix :** tracer, pour XGBoost, le taux de défaut observé en fonction de

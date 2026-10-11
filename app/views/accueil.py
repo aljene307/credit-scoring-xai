@@ -16,7 +16,8 @@ vous pouvez aussi importer votre propre fichier CSV.
 1. **Données** : aperçu, statistiques, classes, graphiques exploratoires.
 2. **Préparation** : choix des variables, séparation entraînement / test, prétraitement.
 3. **Modélisation** : quatre modèles réglés par GridSearchCV, tableau comparatif.
+4. **Évaluation** : métriques sur le jeu de test, courbes ROC et précision-rappel, seuil, calibration.
 
-Les modules suivants (évaluation, explicabilité, API) sont en cours de développement.
+Les modules suivants (explicabilité, API) sont en cours de développement.
 """
 )
