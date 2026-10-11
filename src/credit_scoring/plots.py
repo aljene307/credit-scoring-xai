@@ -102,6 +102,31 @@ def positive_rate_figure(table: pd.DataFrame, col: str, overall_rate: float, pos
     return _layout(fig, f"Taux de « {positive_name} » selon {col}", x_title=col, y_title="Taux (%)")
 
 
+def auc_comparison_figure(table: pd.DataFrame, reference_label: str | None = None) -> go.Figure:
+    """Points : AUC de validation croisée de chaque modèle, barres d'erreur = écart-type entre plis.
+
+    Des points plutôt que des barres : une barre devrait partir de 0, ce qui
+    écraserait des écarts de quelques centièmes.
+    """
+    ordered = table.sort_values("AUC")
+    labels = [
+        f"{m} (référence)" if m == reference_label else m for m in ordered["modèle"]
+    ]
+    fig = go.Figure(
+        go.Scatter(
+            x=ordered["AUC"],
+            y=labels,
+            mode="markers",
+            marker={"size": 12, "color": RATE_COLOR},
+            error_x={"type": "data", "array": ordered["écart-type AUC"], "color": MUTED, "thickness": 2},
+            hovertemplate="%{y}<br>AUC : %{x:.4f} ± %{error_x.array:.4f}<extra></extra>",
+        )
+    )
+    fig = _layout(fig, "AUC de validation croisée (± écart-type entre les 5 plis)", x_title="AUC")
+    fig.update_layout(height=320)
+    return fig
+
+
 def correlation_figure(corr: pd.DataFrame, method_name: str) -> go.Figure:
     """Carte des corrélations, échelle divergente centrée sur 0."""
     fig = go.Figure(

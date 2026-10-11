@@ -402,6 +402,21 @@ ou bruit dans les étiquettes.
   0,059 d'AUC en moins) ; arbre de décision (lisible seulement à faible
   profondeur, voir M08).
 
+### M09. GridSearch relancé depuis l'interface : résultats gardés dans la session — retenu
+- **Choix :** la page « 3. Modélisation » affiche les modèles de référence
+  (fichiers de `models/`) et permet de relancer un GridSearch sur la
+  préparation de la page 2, avec des valeurs choisies dans les grilles de
+  référence. Le nombre de combinaisons et la durée estimée (proportionnelle au
+  GridSearch de référence) sont affichés avant le lancement. Les modèles ainsi
+  obtenus restent dans la session et ne remplacent pas ceux de référence.
+- **Raison :** le sujet demande de choisir modèles et hyperparamètres depuis
+  l'interface ; les modèles de référence doivent rester stables pour
+  l'évaluation, l'API et le one-pager. Par défaut, seules les meilleures
+  valeurs de référence sont cochées (une combinaison, quelques secondes).
+- **Alternatives écartées :** écraser les modèles de référence depuis
+  l'interface ; saisie libre des valeurs (risque de valeurs invalides et de
+  durées imprévisibles).
+
 ### M08. Coût d'un arbre lisible (profondeur 3) — constat
 - **Mesure (validation croisée) :** meilleur arbre de profondeur 3 sans
   pondération : AUC 0,734 (Gini 0,468) ; meilleur arbre toutes profondeurs :
