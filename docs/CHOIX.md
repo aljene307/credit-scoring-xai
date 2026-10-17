@@ -135,8 +135,9 @@ ou bruit dans les étiquettes.
   apparaissent vides) ; Matplotlib sera de toute façon installé avec SHAP.
 - **Alternative écartée :** Plotly avec export en images par kaleido
   (dépendance supplémentaire, parfois difficile à installer sous Windows).
-- **Installation :** Matplotlib est dans `requirements-dev.txt` tant que seul
-  le notebook l'utilise ; il passera dans `requirements.txt` avec SHAP.
+- **Installation :** Matplotlib était dans `requirements-dev.txt` tant que seul
+  le notebook l'utilisait ; il est passé dans `requirements.txt` avec SHAP
+  (étape 5).
 - **Lisibilité :** les tranches de quantiles sont libellées par les valeurs
   réellement observées (« 10 000 – 30 000 ») ; dans le notebook, les barres
   reposant sur moins de 30 clients sont grisées (taux instable).
@@ -305,11 +306,11 @@ ou bruit dans les étiquettes.
   probabilités de défaut réelles.
 - **Alternative écartée :** SMOTE (crée des clients synthétiques, dépendance
   supplémentaire, explications SHAP sur des données artificielles).
-- **Résultat (validation croisée) :** la pondération est retenue pour la
-  régression logistique, Random Forest et XGBoost, mais son effet sur l'AUC
-  est négligeable : +0,0004, +0,0004 et +0,0001. Pour l'arbre, la meilleure
-  combinaison sans pondération est meilleure de 0,0066. Comme prévu, la
-  pondération change surtout les probabilités et donc le seuil utile.
+- **Résultat du premier GridSearch (avant la décision finale) :** GridSearchCV
+  avait retenu la pondération pour la régression logistique, Random Forest et
+  XGBoost, mais pour un gain d'AUC négligeable (+0,0004, +0,0004 et +0,0001) ;
+  pour l'arbre, la meilleure combinaison était sans pondération (+0,0066). Ce
+  constat a conduit à la décision finale ci-dessus.
 
 ### M04. Modèles de référence entraînés hors ligne — retenu
 - **Choix :** un script entraîne et sauvegarde les modèles ; l'interface permet
@@ -318,7 +319,13 @@ ou bruit dans les étiquettes.
   et dépasse les ressources de Streamlit Community Cloud.
 - **Alternative écartée :** tout entraîner à chaque ouverture de l'application.
 
-### M05. Relation non linéaire entre PAY_0 et le risque — confirmé en partie (étape 3)
+### M05. Relation non linéaire entre PAY_0 et le risque — confirmé (étapes 3 et 5)
+- **Confirmation par SHAP (1 000 clients du test) :** contribution moyenne de
+  PAY_0 pour XGBoost : −3,8 / −3,4 / −5,1 points pour −2 / −1 / 0 (plat), +3,7
+  à 1, **+33,1 à 2** (saut de 29 points). La régression logistique ajoute
+  exactement +0,588 log-odds à chaque cran : elle juge −2 bien plus sûr que 0
+  (−1,18 contre −0,01) alors que leurs taux de défaut observés sont presque
+  égaux (13,2 % et 12,8 %), et sous-estime le saut à 2 mois.
 - **Résultat :** AUC de validation 0,727 pour la régression logistique contre
   0,771 à 0,786 pour les trois modèles à base d'arbres (grilles finales). Le
   meilleur `C` est la plus grande valeur de la grille (régularisation la plus
@@ -520,6 +527,191 @@ ou bruit dans les étiquettes.
 - **Raison :** le décideur raisonne sur « le niveau d'études », pas sur une
   colonne technique ; la somme est valide car les valeurs SHAP sont additives.
 - **Alternative écartée :** afficher chaque colonne one-hot séparément.
+
+**Mesures de l'étape 5 :** 1 000 clients du test tirés avec la graine 42 sauf
+mention contraire ; PC de développement (12 cœurs logiques) ; shap 0.51.0,
+lime 0.2.0.1.
+
+### X02. Échelle des valeurs SHAP : probabilité pour XGBoost, log-odds pour la régression logistique — retenu
+- **Choix :** XGBoost (et les autres modèles à arbres) : TreeExplainer
+  « interventionnel » en **points de probabilité**. Régression logistique :
+  LinearExplainer en **log-odds**, l'échelle interne du modèle.
+- **Mesures :**
+
+  | Méthode | Durée pour 1 000 clients | Somme = sortie du modèle |
+  |---|---|---|
+  | XGBoost, probabilité (TreeExplainer, 500 clients de référence) | 158 s | oui (écart 4 × 10⁻⁷) |
+  | XGBoost, log-odds (TreeExplainer natif) | 4 s | oui |
+  | Régression logistique, log-odds (LinearExplainer) | 0,1 s | oui (10⁻¹⁴) |
+  | Méthode commune en probabilité (PermutationExplainer, 23 variables) | 38 min (XGBoost), 11 min (rég. log.) | oui |
+
+  La permutation est **bruitée** : deux calculs du même client avec 500 et
+  5 000 évaluations diffèrent jusqu'à 1,1 point ; comparée à la valeur exacte
+  de XGBoost, elle s'en écarte jusqu'à 4,7 points, et les 5 premières
+  variables ne coïncident que pour 53 % des clients, sans amélioration avec
+  plus d'évaluations.
+- **Raison :** le décideur lit « +31 points de risque » ; aucune méthode exacte
+  n'existe en probabilité pour la régression logistique, et la seule méthode
+  commune mesurée est lente et bruitée.
+- **Conséquence :** les valeurs SHAP des deux modèles ne sont pas sur la même
+  échelle ; on compare donc les modèles par des mesures sans unité (rangs des
+  variables, importance par permutation, recouvrement des 5 premières).
+- **Alternatives écartées :** log-odds pour les deux (même échelle exacte, mais
+  illisible pour un non-spécialiste) ; permutation en probabilité pour les deux
+  (lente et bruitée).
+
+### X03. Échantillon de référence : 500 clients stratifiés sur le score — retenu
+- **Choix :** 500 clients de l'entraînement, 50 par décile de probabilité
+  prédite (tirage stratifié, graine 42), passés à SHAP par
+  `shap.maskers.Independent(..., max_samples=500)`.
+- **Défaut de SHAP découvert :** passé directement à `TreeExplainer`,
+  l'échantillon est **réduit en silence à 100 clients tirés au hasard**, quelle
+  que soit sa taille (vérifié : 100 lignes conservées sur 500). Sans le masker,
+  la valeur de base variait de 17,8 % à 25,3 % et la stratification n'avait
+  aucun effet. Un test vérifie désormais que la valeur de base est bien la
+  probabilité moyenne des clients de référence fournis.
+- **Mesures (après correction, 100 clients expliqués, 3 tirages) :**
+
+  | Référence | Valeur de base | Écart max entre tirages | Durée / 1 000 clients |
+  |---|---|---|---|
+  | 200, simple | 20,2 à 25,5 % | 4,8 points | 48 s |
+  | 200, stratifié | 22,0 à 22,6 % | 1,5 point | 48 s |
+  | 500, simple | 21,5 à 22,8 % | 1,1 point | — (durée aberrante, non retenue) |
+  | **500, stratifié** | **22,04 à 22,07 %** | **0,4 point** | 59 à 158 s |
+  | 1 000, stratifié | 22,14 à 22,18 % | 0,4 point | 331 s |
+
+  Probabilité moyenne réelle sur l'entraînement : 22,08 %.
+- **Raison :** la valeur de base est la référence de toute explication (« 71 %
+  contre 22 % en moyenne ») ; elle doit valoir la vraie moyenne. 1 000 clients
+  n'apportent rien de plus pour un temps 2 à 5 fois plus long.
+- **Alternatives écartées :** tirage simple (base fausse de plusieurs
+  points selon le tirage) ; 1 000 clients (plus lent sans gain).
+
+### X04. Explications globales sur 1 000 clients du test, calculées hors ligne — retenu
+- **Mesure :** importance SHAP moyenne sur 1 000 clients contre les 6 000 :
+  corrélation des rangs 0,999, **mêmes 10 premières variables dans le même
+  ordre** ; durée 158 s contre 916 s.
+- **Raison :** même information pour 6 fois moins de temps. 158 s restent trop
+  longs pour un affichage dans l'application : les valeurs globales sont
+  calculées une fois hors ligne, comme les modèles (M04).
+- **Alternative écartée :** les 6 000 clients (15 minutes pour un classement
+  identique).
+
+### X05. SHAP et LIME pour XGBoost et la régression logistique — retenu
+- **Choix :** SHAP et LIME pour XGBoost (référence) et la régression
+  logistique (modèle le plus interprétable, pour la comparaison) ; importance
+  par permutation et importance propre au modèle pour les quatre modèles.
+- **Mesure :** SHAP sur Random Forest : 6,2 s pour 10 clients avec seulement
+  100 clients de référence (mesure faite avant la correction de X03), soit au
+  moins 10 minutes pour 1 000 clients, et davantage avec 500 clients de
+  référence.
+- **Alternative écartée :** SHAP sur les quatre modèles.
+
+### X06. Importance par permutation : sur le test, baisse d'AUC, 10 répétitions — retenu
+- **Mesures (XGBoost) :** 22 s sur le test. Baisse d'AUC : PAY_0 0,079
+  (± 0,005), LIMIT_BAL 0,018, BILL_AMT1 0,015, puis de 0,003 à 0,005 pour
+  PAY_2, PAY_AMT2, PAY_3, PAY_AMT3, PAY_AMT1. Sur l'entraînement, les baisses
+  sont plus fortes (somme 0,217 contre 0,150 sur le test ; AGE 0,0056 contre
+  0,0008) : elles mesurent aussi ce que le modèle a mémorisé. Corrélation des
+  rangs entraînement / test : 0,76. Avec une autre graine, l'ordre des 4e et
+  5e variables change (écarts inférieurs à un écart-type).
+- **Raison :** le test mesure la dépendance du modèle sur des clients
+  nouveaux. Les variables proches doivent être lues avec leur écart-type, pas
+  par leur rang strict.
+- **Autres modèles (test, 10 répétitions) :** régression logistique 2 s
+  (PAY_0 0,111), arbre 2 s (PAY_0 0,081, PAY_2 0,037), Random Forest 24 s
+  (PAY_0 0,071).
+- **Alternatives écartées :** sur l'entraînement (gonfle les variables
+  mémorisées) ; 5 répétitions (écarts-types moins précis pour le même ordre
+  instable des variables proches).
+
+### X07. LIME : 10 000 voisins, découpage en quartiles, graine fixe — retenu
+- **Mesures de stabilité (3 graines) :**
+  - client 1358 : 1 000 voisins → les 5 premières changent d'une graine à
+    l'autre ; dès 5 000 voisins → mêmes variables, mêmes signes, même ordre ;
+  - 20 clients du test : 5 premières strictement identiques pour 3/20 (5 000
+    voisins), 5/20 (10 000), 7/20 (25 000) ; variables communes aux 3
+    graines : 3,5 / 3,8 / 4,2 sur 5 en moyenne.
+  - Durée : 0,1 s (5 000), 0,4 s (10 000), 0,8 s (25 000) par explication.
+- **Raison :** 10 000 voisins rendent l'explication assez stable (3,8 variables
+  sur 5 communes entre graines) pour un affichage interactif ; la graine fixe
+  rend l'explication reproductible. **Limite à citer :** même à 25 000
+  voisins, LIME reste instable pour une partie des clients.
+- **Alternatives écartées :** 5 000 voisins (moins stable) ; 25 000 voisins
+  (gain modeste pour un temps doublé).
+
+### X08. Comparaison SHAP / LIME : recouvrement des 5 premières et accord des signes — retenu
+- **Mesures (20 clients du test, LIME à 10 000 voisins) :**
+  - XGBoost : 3,8 variables communes sur 5 en moyenne (de 2 à 5), signes
+    concordants 72 sur 75 ; variables communes les plus fréquentes : PAY_0
+    (20 clients sur 20), LIMIT_BAL (17), BILL_AMT1 (10).
+  - Régression logistique : 3,6 sur 5 (de 3 à 5), signes concordants 72 sur
+    72 ; MARRIAGE apparaît chez 14 clients sur 20, ce qui renvoie à
+    l'analyse d'équité.
+  - Client 1358 : 5 variables communes sur 5, toutes de même signe.
+- **Raison :** des mesures simples à expliquer qui ne dépendent pas de
+  l'échelle (LIME n'est pas en points de probabilité).
+
+### X09. Équité : variables relais, modèle sans variables sensibles, erreurs par groupe — retenu
+- **Variables relais** (prédire chaque variable sensible à partir des 19
+  autres, validation croisée sur l'entraînement) : SEX AUC 0,598 ;
+  MARRIAGE 55,1 % de bonnes réponses contre 53,4 % en prédisant toujours la
+  modalité la plus fréquente ; EDUCATION 53,0 % contre 46,9 % (AUC 0,638 :
+  le plafond médian est de 200 000 NT$ en 3e cycle contre 80 000 au lycée) ;
+  AGE R² 0,036 (erreur moyenne 7,4 ans contre 7,5 sans modèle). Corrélation
+  de rang AGE / LIMIT_BAL : 0,19. Les autres variables ne permettent de
+  retrouver que faiblement les variables sensibles, un peu mieux pour le
+  niveau d'études.
+- **XGBoost sans les 4 variables sensibles** (mêmes hyperparamètres) : AUC de
+  validation 0,7841 ± 0,0051, contre 0,7860 avec : −0,002, en dessous de la
+  variation entre plis.
+- **Erreurs sur le test au seuil recommandé** (tests du khi-deux) :
+
+  | Groupe | Clients | Taux de défaut | Rappel | Faux positifs |
+  |---|---|---|---|---|
+  | Femmes | 3 598 | 21,3 % | 54,8 % | 12,7 % |
+  | Hommes | 2 402 | 23,4 % | 57,6 % | 17,4 % |
+  | 21-25 ans | 767 | 25,6 % | 66,3 % | 21,2 % |
+  | 26-35 ans | 2 492 | 19,7 % | 51,4 % | 12,0 % |
+  | 36-45 ans | 1 775 | 22,4 % | 53,4 % | 13,5 % |
+  | 46-55 ans | 788 | 25,1 % | 60,1 % | 17,3 % |
+  | 56 ans et + | 178 | 25,8 % | 65,2 % | 22,7 % |
+
+  Rappel selon le sexe : p = 0,35 (écart non significatif). Faux positifs
+  selon le sexe : p < 0,0001 (un bon payeur homme est plus souvent signalé
+  qu'une bonne payeuse). Rappel et faux positifs selon l'âge : p = 0,002 et
+  p < 0,0001 (les 21-25 ans et les 56 ans et plus sont plus souvent signalés).
+- **Sans les variables sensibles :** l'écart de faux positifs entre sexes se
+  réduit (15,8 % contre 12,4 %, au lieu de 17,4 % contre 12,7 %) mais reste
+  significatif (p = 0,001) ; les écarts selon l'âge persistent (p < 0,0001).
+- **Lecture :** les groupes les plus signalés sont aussi ceux dont le taux de
+  défaut réel est le plus élevé, et le modèle est calibré dans chaque groupe
+  (probabilité moyenne égale au taux observé). Avec des taux de défaut
+  différents, un modèle calibré ne peut pas avoir le même taux de faux
+  positifs dans chaque groupe : il faut choisir le critère d'équité visé.
+- **Recommandation pour le one-pager (décision de l'auteur) :** déployer la
+  version de XGBoost **sans les variables sensibles** (SEX, AGE, MARRIAGE,
+  EDUCATION), qui ne coûte que −0,002 d'AUC en validation croisée (0,7841
+  contre 0,7860, moins que la variation entre plis) et réduit l'écart de
+  faux positifs entre hommes et femmes. Le modèle complet reste dans
+  l'application pour montrer l'analyse d'équité (poids des variables
+  sensibles, erreurs par groupe, comparaison avec et sans).
+- **Limite à citer avec cette recommandation :** retirer les variables
+  sensibles ne supprime pas tous les écarts : ceux selon l'âge persistent,
+  portés par d'autres variables et par des taux de défaut réellement
+  différents entre groupes.
+
+### X10. Phrase de synthèse générée à partir des 3 plus fortes contributions SHAP — retenu
+- **Choix :** niveau de risque (« élevé » si signalé au seuil, « modéré » si
+  au-dessus de la moyenne sans être signalé, « faible » sinon), probabilité
+  comparée à la valeur de base, puis les 3 plus fortes contributions dans le
+  sens de la décision, en langage courant ; les statuts de remboursement
+  identiques sur plusieurs mois sont regroupés.
+- **Exemple (client 1358) :** « Le risque de défaut est élevé (71 % contre
+  22 % en moyenne), principalement à cause d'un retard de paiement de 2 mois
+  en septembre et en août et d'un plafond de crédit faible (20 000 NT$). »
+- **Alternative écartée :** lister les variables avec leurs valeurs SHAP
+  (lisible seulement par un spécialiste).
 
 ---
 
