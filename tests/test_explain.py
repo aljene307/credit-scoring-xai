@@ -109,6 +109,14 @@ def test_summary_sentence_high_risk_groups_months_and_elides():
     )
 
 
+def test_summary_sentence_lists_grouped_months_in_calendar_order():
+    # PAY_3 (juillet) contribue plus que PAY_2 (août) : l'ordre affiché reste août puis juillet.
+    contributions = pd.Series({"PAY_3": 0.20, "LIMIT_BAL": 0.08, "PAY_2": 0.05})
+    client = pd.Series({"PAY_3": 2, "PAY_2": 2, "LIMIT_BAL": 20000})
+    sentence = explain.summary_sentence(contributions, client, proba=0.4, base=0.22, threshold=0.27)
+    assert "un retard de paiement de 2 mois en août et en juillet" in sentence
+
+
 def test_summary_sentence_low_and_moderate_risk():
     contributions = pd.Series({"PAY_0": -0.06, "LIMIT_BAL": -0.04, "AGE": 0.01})
     client = pd.Series({"PAY_0": -1, "LIMIT_BAL": 500000, "AGE": 40})

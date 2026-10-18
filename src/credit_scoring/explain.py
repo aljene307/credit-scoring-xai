@@ -112,6 +112,26 @@ class ShapExplainer:
         return values, float(np.ravel(bases)[0])
 
 
+def model_importance(pipeline, features: list[str], categorical: list[str]) -> pd.Series:
+    """Importance propre au modèle, par variable d'origine (one-hot additionné).
+
+    Régression logistique : valeur absolue des coefficients (variables standardisées,
+    donc comparables) ; arbre et Random Forest : importance par impureté ; XGBoost :
+    gain moyen. Non comparable d'un modèle à l'autre (d'où l'importance par permutation).
+    """
+    estimator = pipeline[-1]
+    columns = list(pipeline[:-1].get_feature_names_out())
+    if hasattr(estimator, "coef_"):
+        raw = np.abs(estimator.coef_[0])
+    elif hasattr(estimator, "get_booster"):
+        gain = estimator.get_booster().get_score(importance_type="gain")
+        raw = np.array([gain.get(c, 0.0) for c in columns])
+    else:
+        raw = estimator.feature_importances_
+    per_column = pd.DataFrame([raw], columns=columns)
+    return aggregate_onehot(per_column, features, categorical).iloc[0].sort_values(ascending=False)
+
+
 # --- LIME -----------------------------------------------------------------------------------------
 
 def _restore_types(frame: pd.DataFrame, categorical: list[str]) -> pd.DataFrame:
@@ -240,6 +260,7 @@ def summary_sentence(
         if feature.startswith("PAY_") and not feature.startswith("PAY_AMT"):
             same = [f for f in drivers if f.startswith("PAY_") and not f.startswith("PAY_AMT")
                     and int(client[f]) == int(client[feature]) and f not in done]
+            same.sort(key=list(MONTHS).index)  # du mois le plus récent au plus ancien
             text = describe(feature, client[feature])
             if len(same) > 1:
                 text = text.rsplit(" en ", 1)[0] + " " + _join([f"en {MONTHS[f]}" for f in same])

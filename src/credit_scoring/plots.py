@@ -212,6 +212,135 @@ def calibration_figure(table: pd.DataFrame, label: str) -> go.Figure:
     return fig
 
 
+# --- Explicabilité (module 5) -----------------------------------------------------------------
+
+UP, DOWN = "#eb6834", "#2a78d6"  # augmente le risque / le diminue
+
+
+def _unit(scale: str) -> tuple[float, str]:
+    """Facteur et libellé de l'axe : points de probabilité ou log-odds."""
+    return (100.0, "points de probabilité") if scale == "probabilité" else (1.0, "log-odds")
+
+
+def importance_figure(importance: pd.Series, title: str, x_title: str, top: int = 15) -> go.Figure:
+    """Barres horizontales : importance par variable (une seule série)."""
+    data = importance.sort_values(ascending=False).head(top)[::-1]
+    fig = go.Figure(go.Bar(x=data.values, y=data.index, orientation="h", marker_color=RATE_COLOR,
+                           hovertemplate="%{y} : %{x:.4f}<extra></extra>"))
+    fig = _layout(fig, title, x_title=x_title)
+    fig.update_layout(height=max(320, 26 * len(data) + 120))
+    return fig
+
+
+def permutation_figure(table: pd.DataFrame, labels: dict, top: int = 10) -> go.Figure:
+    """Points ± écart-type : baisse d'AUC quand on mélange chaque variable, pour chaque modèle."""
+    order = (table[table["modele"] == "xgboost"] if "xgboost" in set(table["modele"]) else table)
+    variables = list(order.groupby("variable")["moyenne"].mean().nlargest(top).index)[::-1]
+    fig = go.Figure()
+    for name in [m for m in MODEL_COLORS if m in set(table["modele"])]:
+        rows = table[(table["modele"] == name)].set_index("variable").loc[variables]
+        fig.add_scatter(x=rows["moyenne"], y=variables, mode="markers", name=labels.get(name, name),
+                        marker={"size": 9, "color": MODEL_COLORS[name]},
+                        error_x={"type": "data", "array": rows["ecart_type"], "color": MODEL_COLORS[name], "thickness": 1.5},
+                        hovertemplate="%{y}<br>baisse d'AUC %{x:.4f}<extra>%{fullData.name}</extra>")
+    fig = _layout(fig, "Importance par permutation (test, ± écart-type sur 10 répétitions)",
+                  x_title="Baisse d'AUC quand la variable est mélangée")
+    fig.update_layout(height=460)
+    return fig
+
+
+def _value_rank(values: pd.Series) -> np.ndarray:
+    """Position de chaque valeur dans sa variable (0 = la plus faible, 1 = la plus élevée)."""
+    return values.rank(pct=True).to_numpy()
+
+
+def beeswarm_figure(shap_values: pd.DataFrame, data: pd.DataFrame, scale: str, top: int = 12) -> go.Figure:
+    """Un point par client et par variable : valeur SHAP (abscisse), valeur de la variable (couleur)."""
+    factor, unit = _unit(scale)
+    order = list(shap_values.abs().mean().nlargest(top).index)
+    rng = np.random.default_rng(0)
+    fig = go.Figure()
+    for i, feature in enumerate(order[::-1]):
+        fig.add_scatter(
+            x=shap_values[feature] * factor,
+            y=i + rng.uniform(-0.3, 0.3, len(shap_values)),
+            mode="markers",
+            showlegend=False,
+            marker={"size": 4, "color": _value_rank(data.loc[shap_values.index, feature]), "colorscale": DIVERGING,
+                    "cmin": 0, "cmax": 1, "opacity": 0.7, "showscale": i == 0,
+                    **({"colorbar": {"title": "valeur", "tickvals": [0, 1], "ticktext": ["faible", "élevée"]}}
+                       if i == 0 else {})},
+            customdata=[display_value(feature, v) for v in data.loc[shap_values.index, feature]],
+            hovertemplate=f"{feature} = %{{customdata}}<br>contribution %{{x:+.2f}} {unit}<extra></extra>",
+        )
+    fig.add_vline(x=0, line_color=MUTED, line_width=1)
+    fig.update_yaxes(tickvals=list(range(len(order))), ticktext=order[::-1])
+    fig = _layout(fig, f"Valeurs SHAP de {len(shap_values)} clients du test", x_title=f"Contribution au risque ({unit})")
+    fig.update_layout(height=max(420, 34 * len(order) + 120))
+    return fig
+
+
+def dependence_figure(shap_values: pd.DataFrame, data: pd.DataFrame, feature: str, scale: str) -> go.Figure:
+    """Valeur de la variable (abscisse) contre sa valeur SHAP (ordonnée), avec la moyenne par valeur."""
+    factor, unit = _unit(scale)
+    x = data.loc[shap_values.index, feature]
+    y = shap_values[feature] * factor
+    discrete = x.nunique() <= 12
+    jitter = np.random.default_rng(0).uniform(-0.15, 0.15, len(x)) if discrete else 0
+    fig = go.Figure(go.Scatter(x=x + jitter, y=y, mode="markers", name="un client",
+                               marker={"size": 5, "color": RATE_COLOR, "opacity": 0.45},
+                               customdata=[display_value(feature, v) for v in x],
+                               hovertemplate=f"{feature} = %{{customdata}}<br>contribution %{{y:+.2f}} {unit}<extra></extra>"))
+    if discrete:
+        means = y.groupby(x).mean()
+        fig.add_scatter(x=means.index, y=means.values, mode="lines+markers", name="moyenne par valeur",
+                        line={"color": UP, "width": 2}, marker={"size": 8, "color": UP})
+    fig.add_hline(y=0, line_color=MUTED, line_width=1)
+    fig = _layout(fig, f"Dépendance SHAP : effet de {feature} sur le risque", x_title=feature,
+                  y_title=f"Contribution ({unit})")
+    fig.update_layout(height=420)
+    return fig
+
+
+def waterfall_figure(contributions: pd.Series, client: pd.Series, base: float, scale: str, top: int = 10) -> go.Figure:
+    """Cascade : de la valeur de base à la prédiction du client, variable par variable."""
+    factor, unit = _unit(scale)
+    order = list(contributions.abs().nlargest(top).index)
+    rest = contributions.drop(order).sum()
+    labels = [f"{f} = {display_value(f, client[f])}" for f in order] + [f"{len(contributions) - len(order)} autres variables"]
+    steps = list(contributions[order] * factor) + [rest * factor]
+    total = (base + contributions.sum()) * factor
+    fig = go.Figure(go.Waterfall(
+        orientation="h",
+        y=["valeur de base"] + labels + ["prédiction du client"],
+        x=[base * factor] + steps + [total],
+        measure=["absolute"] + ["relative"] * len(steps) + ["total"],
+        text=[f"{base * factor:.2f}"] + [f"{s:+.2f}" for s in steps] + [f"{total:.2f}"],
+        textposition="outside",
+        increasing={"marker": {"color": UP}},
+        decreasing={"marker": {"color": DOWN}},
+        totals={"marker": {"color": MUTED}},
+        connector={"line": {"color": "#c3c2b7", "width": 1}},
+        hovertemplate="%{y}<br>%{text}<extra></extra>",
+    ))
+    fig.update_yaxes(autorange="reversed")
+    fig = _layout(fig, f"Contributions SHAP ({unit})", x_title=unit)
+    fig.update_layout(height=max(420, 30 * (len(order) + 3) + 120), showlegend=False)
+    return fig
+
+
+def lime_figure(rules: pd.Series) -> go.Figure:
+    """Barres : poids LIME de chaque règle (orange = augmente le risque, bleu = le diminue)."""
+    data = rules.reindex(rules.abs().sort_values().index)
+    fig = go.Figure(go.Bar(x=data.values, y=data.index, orientation="h",
+                           marker_color=[UP if w > 0 else DOWN for w in data.values],
+                           hovertemplate="%{y}<br>poids %{x:+.4f}<extra></extra>"))
+    fig.add_vline(x=0, line_color=MUTED, line_width=1)
+    fig = _layout(fig, "Explication LIME (modèle linéaire local)", x_title="Poids sur la probabilité de défaut")
+    fig.update_layout(height=max(320, 30 * len(data) + 120))
+    return fig
+
+
 def auc_comparison_figure(table: pd.DataFrame, reference_label: str | None = None) -> go.Figure:
     """Points : AUC de validation croisée de chaque modèle, barres d'erreur = écart-type entre plis.
 

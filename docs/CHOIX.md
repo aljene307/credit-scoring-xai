@@ -712,6 +712,28 @@ lime 0.2.0.1.
   en septembre et en août et d'un plafond de crédit faible (20 000 NT$). »
 - **Alternative écartée :** lister les variables avec leurs valeurs SHAP
   (lisible seulement par un spécialiste).
+- **Ordre des mois :** quand plusieurs statuts identiques sont regroupés, les
+  mois sont écrits du plus récent au plus ancien (« en août et en juillet »),
+  quel que soit l'ordre de leurs contributions.
+- **Moyenne citée :** probabilité moyenne de l'échantillon de référence pour le
+  modèle expliqué : 22 % pour XGBoost, 23 % pour la régression logistique (ce
+  modèle prédit en moyenne un peu plus de risque sur les mêmes 500 clients).
+
+### X11. Page « 5. Explicabilité » : global hors ligne, client en direct — retenu
+- **Choix :** les valeurs SHAP globales (1 000 clients), l'importance par
+  permutation des quatre modèles et l'analyse d'équité sont calculées une fois
+  par `scripts/expliquer.py` (3 min 45 s sur le PC de développement) et lues
+  par la page. L'explication d'un client (SHAP, LIME, phrase) est calculée en
+  direct : client réel du test choisi par son identifiant ou au hasard, ou
+  client fictif obtenu en modifiant ses valeurs dans un formulaire.
+- **Raison :** 138 s pour SHAP global ne sont pas acceptables à l'affichage ;
+  un client prend moins d'une seconde (SHAP environ 0,2 s, LIME environ 0,4 s).
+- **Onglets :** importance globale (propre au modèle et par permutation), SHAP
+  global (beeswarm), dépendance, explication d'un client (waterfall, LIME,
+  accord SHAP / LIME, phrase), équité.
+- **Régression logistique :** la page indique que ses valeurs sont en log-odds
+  et explique ce que cela veut dire.
+- **Alternative écartée :** tout calculer à l'ouverture de la page.
 
 ---
 

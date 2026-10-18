@@ -17,7 +17,8 @@ vous pouvez aussi importer votre propre fichier CSV.
 2. **Préparation** : choix des variables, séparation entraînement / test, prétraitement.
 3. **Modélisation** : quatre modèles réglés par GridSearchCV, tableau comparatif.
 4. **Évaluation** : métriques sur le jeu de test, courbes ROC et précision-rappel, seuil, calibration.
+5. **Explicabilité** : importance des variables, SHAP, LIME, explication d'un client, équité.
 
-Les modules suivants (explicabilité, API) sont en cours de développement.
+Le module 6 (API) est en cours de développement.
 """
 )
