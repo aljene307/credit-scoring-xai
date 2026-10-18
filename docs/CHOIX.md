@@ -856,6 +856,40 @@ lime 0.2.0.1.
 
 ---
 
+## Livrables
+
+### L01. One-pager produit à partir des résultats — retenu
+- **Choix :** le texte et la mise en page A4 sont dans
+  `docs/one-pager/one-pager.template.html` ; `scripts/one_pager.py` y insère les
+  chiffres lus dans `models/` ou recalculés sur le jeu de test (AUC et
+  intervalle de confiance, matrice de confusion, accord SHAP / LIME sur
+  20 clients, équité), trace la figure de PAY_0, puis fait imprimer le PDF par
+  Microsoft Edge en mode sans fenêtre. Le script vérifie que le PDF fait une
+  seule page.
+- **Raison :** aucun chiffre recopié à la main, donc aucun écart possible avec
+  l'application ; aucun outil à installer ; le texte se retouche librement.
+- **Contenu :** problème, données, méthode, résultats (dont le modèle sans
+  variables sensibles : AUC test et seuil), explications clés avec la figure de
+  PAY_0, analyse critique (les quatre questions du sujet), recommandation,
+  limites.
+- **Alternatives écartées :** traitement de texte (chiffres recopiés à la
+  main) ; bibliothèque Python de génération de PDF (dépendance de plus, texte
+  difficile à retoucher).
+
+### L02. Captures d'écran produites automatiquement — retenu
+- **Choix :** les 8 captures de `docs/captures/` sont prises par un script qui
+  pilote Microsoft Edge (Playwright, installé seulement dans l'environnement
+  local, hors des fichiers de dépendances), puis relues une à une avant le
+  commit.
+- **Raison :** seul le contenu des pages est capturé (ni barre d'adresse, ni
+  onglet, ni bureau). Les premières captures ont aussi révélé trois défauts
+  d'affichage de l'application, corrigés (légende des courbes, étiquettes du
+  waterfall, décision tronquée).
+- **Alternative écartée :** captures manuelles (risque d'inclure des éléments
+  personnels de l'écran).
+
+---
+
 ## Déploiement
 
 ### D01. API sur Render (offre gratuite) — retenu

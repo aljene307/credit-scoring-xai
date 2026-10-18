@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Scoring de crédit explicable — synthèse</title>
+<!-- Gabarit du one-pager : le texte se modifie ici ; les repères $$nom sont remplacés par
+     scripts/one_pager.py avec les chiffres lus dans les résultats du projet
+     (écrire $$ pour obtenir un vrai signe dollar). -->
+<style>
+  @page { size: A4; margin: 11mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 8.6pt; line-height: 1.32; color: #1d1d1b; margin: 0; }
+  header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #2a78d6; padding-bottom: 3pt; margin-bottom: 6pt; }
+  h1 { font-size: 15pt; margin: 0; color: #184f95; }
+  .auteur { font-size: 8pt; color: #52514e; text-align: right; }
+  h2 { font-size: 9.6pt; color: #184f95; margin: 6pt 0 2pt; }
+  p { margin: 0 0 3pt; }
+  ul { margin: 0 0 3pt; padding-left: 13pt; }
+  li { margin-bottom: 1.5pt; }
+  .colonnes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12pt; }
+  table { border-collapse: collapse; width: 100%; margin: 2pt 0 4pt; font-size: 8.2pt; }
+  th, td { border-bottom: 1px solid #e1e0d9; padding: 1.6pt 3pt; text-align: left; }
+  th { color: #52514e; font-weight: 600; }
+  td.n { text-align: right; white-space: nowrap; }
+  tr.ref td { font-weight: 600; }
+  .phrase { background: #eef5fd; border-left: 3px solid #2a78d6; padding: 3pt 5pt; margin: 3pt 0; font-style: italic; }
+  .reco { background: #fff4ee; border-left: 3px solid #eb6834; padding: 4pt 6pt; margin-top: 5pt; }
+  figure { margin: 2pt 0 3pt; text-align: center; }
+  figure img { width: 100%; }
+  figcaption { font-size: 7.4pt; color: #52514e; }
+  .source { font-size: 7pt; color: #898781; margin-top: 4pt; }
+  .lien { color: #184f95; text-decoration: none; white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Scoring de crédit explicable</h1>
+  <div class="auteur">Mohamed Aljene · II3-IF · Data Mining, ENSI · 2026-2027<br>Enseignante : Rym Besrour · Synthèse en une page</div>
+</header>
+
+<div class="colonnes">
+<div>
+  <h2>1. Le problème</h2>
+  <p>Une banque veut repérer, un mois à l'avance, les clients de carte de crédit qui risquent de ne pas
+  payer, et pouvoir <b>expliquer chaque décision</b> au client et au régulateur.</p>
+
+  <h2>2. Les données</h2>
+  <p>$n_clients clients taïwanais (2005), 23 informations par client : plafond de crédit, profil, retards de
+  paiement, factures et paiements des six derniers mois. <b>$taux_defaut % ont fait défaut</b> le mois suivant.
+  Les codes non documentés de deux variables ont été regroupés.</p>
+
+  <h2>3. La méthode</h2>
+  <p>Conformément à la consigne de l'enseignante, on compare deux modèles simples (régression logistique,
+  arbre de décision) et deux modèles ensemblistes (Random Forest, XGBoost), réglés par GridSearchCV sur 80 %
+  des clients ($combinaisons combinaisons de réglages testées par validation croisée). Le seuil de décision
+  est choisi par validation croisée sur ces mêmes clients. Les 20 % restants ($n_test clients) ne servent
+  qu'à la mesure finale.</p>
+
+  <h2>4. Les résultats</h2>
+  <table>
+    <tr><th>Modèle</th><th class="n">AUC sur le test</th></tr>
+    <tr class="ref"><td>XGBoost (référence)</td><td class="n">$auc_xgboost [$ic_bas ; $ic_haut]</td></tr>
+    <tr><td>Random Forest</td><td class="n">$auc_random_forest</td></tr>
+    <tr><td>Arbre de décision</td><td class="n">$auc_arbre</td></tr>
+    <tr><td>Régression logistique</td><td class="n">$auc_logreg</td></tr>
+    <tr class="ref"><td>XGBoost sans variables sensibles</td><td class="n">$auc_sans (seuil $seuil_sans)</td></tr>
+  </table>
+  <p>L'AUC est la probabilité qu'un mauvais payeur reçoive une note plus élevée qu'un bon payeur
+  (0,5 = hasard, 1 = parfait). Sur le test, XGBoost atteint aussi un Gini de $gini et un KS de $ks.
+  Au seuil retenu, sur $n_test clients, XGBoost en signale <b>$signales</b> :
+  <b>$vrais_defauts</b> font réellement défaut ($part_vrais %) ; il manque $manques défauts sur $defauts.
+  Ses probabilités sont fiables : parmi les clients notés environ 40 %, environ 40 % font réellement
+  défaut.</p>
+
+  <h2>5. Ce qui explique le risque</h2>
+  <p><b>Le retard de paiement du dernier mois pèse plus que tout le reste.</b> Le risque reste bas tant que le
+  client paie au moins le minimum, puis bondit dès un mois de retard ; à deux mois, la note augmente de
+  <b>$shap_pay0_2 points</b> en moyenne. Un plafond de crédit faible augmente aussi le risque.</p>
+  <figure>
+    <img src="data:image/png;base64,$figure_pay0" alt="Contribution moyenne du retard de paiement du dernier mois">
+    <figcaption>Effet moyen du statut de paiement du dernier mois sur la note (SHAP, XGBoost, 1 000 clients).</figcaption>
+  </figure>
+  <p>Exemple, client 1358 :</p>
+  <p class="phrase">« $phrase_1358 »</p>
+</div>
+
+<div>
+  <h2>6. Analyse critique</h2>
+  <p><b>SHAP et LIME sont-ils d'accord ?</b> Pour l'essentiel, oui : sur 20 clients, ils partagent en moyenne
+  $accord variables sur les 5 principales, et vont dans le même sens dans $signes. Ils retrouvent
+  l'intuition d'un banquier : retards récents et plafond faible. Limite : LIME change un peu d'un tirage à
+  l'autre pour certains clients ; SHAP sert donc de référence.</p>
+  <p><b>Le modèle s'appuie-t-il sur des variables sensibles ?</b> Peu. Le sexe, l'âge, la situation familiale
+  et le niveau d'études pèsent peu, et les autres variables ne permettent guère de les deviner. En revanche,
+  un bon payeur homme est plus souvent signalé à tort qu'une bonne payeuse ($fp_homme % contre $fp_femme %),
+  de même que les moins de 26 ans ($fp_jeunes %) et les plus de 55 ans ($fp_ages %). Comme ces groupes font
+  un peu plus souvent défaut, un modèle qui donne un risque juste à chaque groupe ne peut pas avoir en
+  même temps le même taux de fausses alertes pour tous : la banque doit choisir lequel de ces deux
+  objectifs elle privilégie. Retirer les quatre variables sensibles ne coûte que $perte_auc d'AUC.</p>
+  <p><b>Performance ou simplicité ?</b> La régression logistique, la plus simple à expliquer, perd
+  $ecart_logreg d'AUC : elle ne sait pas représenter le bond du risque au premier mois de retard. Un arbre de
+  trois questions, lisible en entier, perd $ecart_arbre3 (en validation croisée). XGBoost, expliqué par SHAP,
+  donne à la fois la meilleure performance et une explication pour chaque client.</p>
+  <p><b>Quelles actions pour le décideur ?</b></p>
+  <ul>
+    <li>Agir dès le <b>premier mois de retard</b> : relance, échéancier, conseil.</li>
+    <li>Réexaminer les clients à plafond faible qui commencent à payer en retard.</li>
+    <li>Fixer le seuil selon le coût réel d'un défaut manqué face à celui d'un bon client refusé.</li>
+    <li>Remettre au client la phrase qui explique sa note, et lui dire ce qui la ferait baisser.</li>
+  </ul>
+
+  <div class="reco"><b>Recommandation.</b> Déployer <b>XGBoost sans variables sensibles</b> (AUC test
+  $auc_sans, seuil $seuil_sans), déjà servi par l'API du projet. Suivre chaque trimestre sa performance et
+  les écarts d'erreur entre groupes, et le réentraîner sur des données récentes.</div>
+
+  <h2>7. Limites</h2>
+  <ul>
+    <li>Données de Taïwan en 2005 : les comportements actuels peuvent être différents.</li>
+    <li>Le codage des retards semble varier selon le mois (« 1 mois de retard » n'apparaît presque qu'en septembre).</li>
+    <li>$inactifs comptes sans aucune facture ni aucun paiement font pourtant défaut à $taux_inactifs % : la
+    définition du défaut est peut-être bruitée.</li>
+    <li>Le jeu ne donne pas le coût des erreurs : le seuil est choisi sur un équilibre précision / rappel (F1).</li>
+    <li>Le modèle sans variables sensibles reprend les réglages du modèle complet, sans réglage dédié.</li>
+  </ul>
+  <p class="source">Données : Default of Credit Card Clients, UCI (id 350), licence CC BY 4.0 ; Yeh et Lien (2009).
+<br>
+  API : <a class="lien" href="https://credit-scoring-xai-api.onrender.com/docs">https://credit-scoring-xai-api.onrender.com</a>
+  (documentation : /docs)<br>
+  Code, notebook, journal des décisions :
+  <a class="lien" href="https://github.com/aljene307/credit-scoring-xai">https://github.com/aljene307/credit-scoring-xai</a></p>
+</div>
+</div>
+</body>
+</html>
