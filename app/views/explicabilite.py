@@ -7,6 +7,7 @@ import streamlit as st
 from credit_scoring import config
 from credit_scoring.config import CATEGORICAL_FEATURES, LABELS, PAY_STATUS_FEATURES, PAY_STATUS_LABELS
 from credit_scoring.explain import (
+    IMPORTANCE_LABELS,
     LimeExplainer,
     ShapExplainer,
     agreement,
@@ -117,11 +118,16 @@ tabs = st.tabs(["Importance globale", "SHAP global", "Dépendance", "Explication
 # --- Importance globale -----------------------------------------------------------------------
 with tabs[0]:
     name = st.selectbox("Importance propre au modèle", list(MODEL_LABELS), format_func=MODEL_LABELS.get, index=3)
-    kind = {"logreg": "valeur absolue des coefficients (variables standardisées)", "arbre": "importance par impureté",
-            "random_forest": "importance par impureté", "xgboost": "gain moyen"}[name]
+    kind = IMPORTANCE_LABELS[name]
     st.plotly_chart(importance_figure(model_importance(models[name], list(X_test.columns), CATEGORICAL_FEATURES),
-                                      f"{MODEL_LABELS[name]} : {kind}", kind))
-    st.caption("Mesure propre à chaque type de modèle : rapide, mais non comparable d'un modèle à l'autre.")
+                                      MODEL_LABELS[name], kind))
+    st.caption(f"Mesure : {kind}. Propre à chaque type de modèle : rapide, mais non comparable d'un modèle à l'autre.")
+    if name == "logreg":
+        st.caption(
+            "Pour une variable catégorielle, l'écart entre modalités ne tient pas compte du nombre de clients "
+            "concernés : EDUCATION est en tête à cause de la modalité « Autres ou inconnu » (1,6 % des clients). "
+            "L'importance par permutation ci-dessous mesure l'effet réel sur l'ensemble des clients."
+        )
     if glob is not None:
         st.plotly_chart(permutation_figure(glob["permutation"], MODEL_LABELS))
         st.caption(

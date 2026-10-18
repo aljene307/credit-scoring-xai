@@ -85,6 +85,18 @@ def test_model_importance_is_per_original_variable(artefacts):
         importance = explain.model_importance(models[name], FEATURES, CATEGORICAL_FEATURES)
         assert set(importance.index) == set(FEATURES)
         assert (importance >= 0).all() and importance.is_monotonic_decreasing
+        if name != "logreg":  # parts additives (impureté, gain total) : elles totalisent 1
+            assert importance.sum() == pytest.approx(1.0)
+
+
+def test_logistic_importance_of_a_categorical_variable_is_the_gap_between_modalities(artefacts):
+    """Régression : la somme des |coefficients| des modalités gonflait les variables catégorielles."""
+    _, _, models, _, _, _ = artefacts
+    pipe = models["logreg"]
+    coef = pd.Series(pipe[-1].coef_[0], index=pipe[:-1].get_feature_names_out())
+    importance = explain.model_importance(pipe, FEATURES, CATEGORICAL_FEATURES)
+    assert importance["SEX"] == pytest.approx(abs(coef["SEX_1"] - coef["SEX_2"]))
+    assert importance["PAY_0"] == pytest.approx(abs(coef["PAY_0"]))
 
 
 def test_compute_and_save_writes_everything_and_reloads(artefacts):

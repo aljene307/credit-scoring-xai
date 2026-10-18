@@ -719,6 +719,27 @@ lime 0.2.0.1.
   modèle expliqué : 22 % pour XGBoost, 23 % pour la régression logistique (ce
   modèle prédit en moyenne un peu plus de risque sur les mêmes 500 clients).
 
+### X12. Importance propre au modèle : des mesures qui s'additionnent — retenu (correction)
+- **Défaut constaté :** une première version additionnait, pour chaque variable
+  catégorielle, le **gain moyen** de XGBoost et les **|coefficients|** de la
+  régression logistique de ses modalités. Résultat faux : EDUCATION, SEX et
+  MARRIAGE passaient devant PAY_0 pour la régression logistique, et EDUCATION
+  en 3e position pour XGBoost, en contradiction avec l'importance par
+  permutation.
+- **Preuve :** pour SEX, coefficients −0,353 (homme) et −0,473 (femme) : la
+  somme des valeurs absolues donne 0,826 alors que l'écart réel entre les deux
+  modalités n'est que de 0,120 (le reste est un décalage commun compensé par
+  la constante). Pour XGBoost, en part du gain total : PAY_0 40,6 %,
+  LIMIT_BAL 5,4 %, PAY_2 4,6 %, EDUCATION 1,5 %, MARRIAGE 0,6 %, SEX 0,5 %.
+- **Choix :** XGBoost : part du gain total ; arbre et Random Forest : part de la
+  réduction d'impureté (déjà additives) ; régression logistique : |coefficient|
+  par écart-type pour une numérique, écart entre la modalité la plus et la
+  moins risquée pour une catégorielle. Deux tests empêchent le retour du défaut.
+- **Limite à citer :** pour la régression logistique, EDUCATION reste en tête
+  (écart de 1,135) à cause de la modalité « Autres ou inconnu », qui ne
+  concerne que 1,6 % des clients ; l'importance par permutation (0,0019)
+  mesure son effet réel sur l'ensemble des clients.
+
 ### X11. Page « 5. Explicabilité » : global hors ligne, client en direct — retenu
 - **Choix :** les valeurs SHAP globales (1 000 clients), l'importance par
   permutation des quatre modèles et l'analyse d'équité sont calculées une fois

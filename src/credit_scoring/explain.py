@@ -112,20 +112,42 @@ class ShapExplainer:
         return values, float(np.ravel(bases)[0])
 
 
-def model_importance(pipeline, features: list[str], categorical: list[str]) -> pd.Series:
-    """Importance propre au modèle, par variable d'origine (one-hot additionné).
+IMPORTANCE_LABELS = {
+    "logreg": "|coefficient| par écart-type (numériques) ; écart entre modalités extrêmes (catégorielles)",
+    "arbre": "part de la réduction d'impureté",
+    "random_forest": "part de la réduction d'impureté",
+    "xgboost": "part du gain total",
+}
 
-    Régression logistique : valeur absolue des coefficients (variables standardisées,
-    donc comparables) ; arbre et Random Forest : importance par impureté ; XGBoost :
-    gain moyen. Non comparable d'un modèle à l'autre (d'où l'importance par permutation).
+
+def model_importance(pipeline, features: list[str], categorical: list[str]) -> pd.Series:
+    """Importance propre au modèle, par variable d'origine (choix X12).
+
+    - Arbre, Random Forest : part de la réduction d'impureté ; XGBoost : part du gain
+      total. Ces quantités s'additionnent : la somme des colonnes one-hot est valide.
+    - Régression logistique : |coefficient| pour une variable numérique (effet d'un
+      écart-type) ; pour une catégorielle, écart entre le coefficient de la modalité la
+      plus risquée et celui de la moins risquée (seules les différences entre modalités
+      ont un sens). Les deux unités diffèrent, et l'écart entre modalités ne tient pas
+      compte du nombre de clients concernés.
+    Non comparable d'un modèle à l'autre : d'où l'importance par permutation.
     """
     estimator = pipeline[-1]
     columns = list(pipeline[:-1].get_feature_names_out())
     if hasattr(estimator, "coef_"):
-        raw = np.abs(estimator.coef_[0])
-    elif hasattr(estimator, "get_booster"):
-        gain = estimator.get_booster().get_score(importance_type="gain")
-        raw = np.array([gain.get(c, 0.0) for c in columns])
+        coef = pd.Series(estimator.coef_[0], index=columns)
+        importance = {}
+        for feature in features:
+            if feature in categorical:
+                levels = coef[[c for c in columns if c.startswith(f"{feature}_")]]
+                importance[feature] = float(levels.max() - levels.min())
+            else:
+                importance[feature] = float(abs(coef[feature]))
+        return pd.Series(importance).sort_values(ascending=False)
+    if hasattr(estimator, "get_booster"):
+        total_gain = estimator.get_booster().get_score(importance_type="total_gain")
+        raw = np.array([total_gain.get(c, 0.0) for c in columns])
+        raw = raw / raw.sum()
     else:
         raw = estimator.feature_importances_
     per_column = pd.DataFrame([raw], columns=columns)
