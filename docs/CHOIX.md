@@ -856,6 +856,49 @@ lime 0.2.0.1.
 
 ---
 
+## Déploiement
+
+### D01. API sur Render (offre gratuite) — retenu
+- **Choix :** service web gratuit de Render, construit à partir du dépôt GitHub
+  (application GitHub de Render installée sur ce seul dépôt).
+- **Raison :** seule solution vérifiée qui donne gratuitement une API publique et
+  documentée (`/docs`). Mémoire mesurée de l'API : pic de 287 Mo pour 512 Mo
+  disponibles (API05).
+- **Limites de l'offre (vérifiées en octobre 2026) :** 0,1 cœur, mise en veille
+  après 15 minutes sans requête, réveil en environ une minute, 750 heures par
+  mois. Render peut demander une carte bancaire pour une vérification
+  anti-fraude : si c'est le cas, on s'arrête et on choisit une autre solution.
+- **Alternatives écartées :** Space Docker de Hugging Face (désormais réservé aux
+  comptes payants : « Gradio and Docker Spaces … require a paid plan ») ; Koyeb
+  (mêmes limites, carte bancaire signalée par certaines sources) ; API dans le
+  conteneur de l'application (pas d'API publique ni de `/docs` accessible).
+
+### D02. Application sur Streamlit Community Cloud, après le passage en public — retenu
+- **Choix :** l'application est déployée depuis le dépôt **public**, après les
+  vérifications de publication. Elle est alors publique : il suffit du lien pour
+  l'ouvrir, sans invitation.
+- **Raison :** pour un dépôt privé, Streamlit demande l'autorisation GitHub
+  `repo`, qui donne accès en lecture et en écriture à **tous** les dépôts du
+  compte, sans possibilité de la limiter à un seul dépôt ; c'est contraire à la
+  règle « n'autoriser l'accès qu'au dépôt credit-scoring-xai ».
+- **Alternatives écartées :** déployer depuis le dépôt privé (autorisation sur
+  tous les dépôts, une seule application privée, accès des lecteurs par
+  invitation e-mail) ; compte GitHub dédié au déploiement (plus lourd).
+
+### D03. Ordre des étapes — retenu
+1. Déploiement de l'API sur Render.
+2. Test avec l'application lancée en local, `API_URL` réglée sur l'adresse de
+   Render (page 5 « calculé par l'API »).
+3. README et one-pager.
+4. Vérifications avant publication (gitleaks sur tout l'historique, recherche
+   de données personnelles, relecture des captures, test du README sur un clone
+   neuf).
+5. Passage du dépôt en public.
+6. Déploiement de l'application sur Streamlit Community Cloud.
+7. Lien de l'application dans le README.
+
+---
+
 ## Architecture et outillage
 
 ### A01. Code partagé dans un paquet `src/credit_scoring` — retenu
@@ -875,9 +918,17 @@ lime 0.2.0.1.
 - **Raison :** le déploiement se fait sous Linux ; évite les différences
   parasites entre Windows et Linux.
 
-### A05. Modèles entraînés hors du dépôt pour l'instant — en attente
-- **Choix :** `models/` est ignoré par Git tant que la taille des fichiers
-  n'est pas connue.
+### A05. Modèles finaux commités une seule fois — retenu
+- **Décision finale :** les 15 fichiers de `models/` (4 modèles, modèle sans
+  variables sensibles, résultats, explications précalculées, paquet de
+  démarrage de l'API ; 13,5 Mo) sont commités en une fois, par des exceptions
+  dans `.gitignore` (`models/*`, puis `!models/*.joblib`, `*.json`, `*.parquet`).
+  Les hébergeurs ne voient que le dépôt GitHub. Contenu vérifié avant le
+  commit : aucun chemin ni nom personnel, y compris dans les fichiers binaires.
+- **Alternative écartée :** fichiers joints à une « Release » GitHub, téléchargés
+  au démarrage (jeton d'accès nécessaire tant que le dépôt est privé).
+- **Historique de la décision :** `models/` est resté ignoré par Git tant que la
+  taille des fichiers n'était pas connue.
 - **Tailles mesurées** (joblib, compression de niveau 3, scikit-learn 1.9.1,
   XGBoost 3.2.0) :
 
