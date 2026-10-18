@@ -948,6 +948,33 @@ lime 0.2.0.1.
 6. Déploiement de l'application sur Streamlit Community Cloud.
 7. Lien de l'application dans le README.
 
+### D04. Application déployée sur Streamlit Community Cloud — retenu
+- **Application en ligne :** <https://credit-scoring-xai.streamlit.app>, depuis
+  la branche `main`, fichier de démarrage `app/Accueil.py`, **Python 3.11**
+  (réglage « Advanced settings » ; 3.12 par défaut), secrets `API_URL`
+  (adresse de Render) et `API_TIMEOUT = "30"`. Connexion GitHub limitée aux
+  dépôts publics (autorisation par défaut, sans la permission `repo`).
+- **Plantage au premier démarrage :** erreur dans scipy à l'import de
+  scikit-learn (`KeyError`), disparue après « Reboot app ». **Cause probable :**
+  deux exécutions de l'application (par exemple le contrôle de santé de
+  l'hébergeur et un visiteur) importent scikit-learn et scipy en même temps,
+  chacune dans son fil ; l'une voit scipy à moitié chargé. **Mesure :** 8 fils
+  qui importent les modules du projet au même instant, dans un environnement
+  neuf : 5 échecs sur 60 essais (`ImportError … partially initialized module
+  'scipy._lib._testutils'`, même famille d'erreur).
+- **Correction :** `app/Accueil.py` importe d'abord `credit_scoring.demarrage`,
+  qui charge scipy, scikit-learn et les modules du projet. Python exécute le
+  corps d'un module une seule fois et fait attendre les autres fils jusqu'à la
+  fin : tout est chargé en une fois, avant toute page. Même essai : 0 échec sur
+  60.
+- **Versions :** scipy figé à 1.17.1 (version de l'environnement de
+  développement, jusque-là installée sans être figée) ; pyarrow passé de 25.0.1
+  à 24.0.0. Vérifié sur un environnement neuf : 102 tests réussis, les 7 pages
+  s'affichent, client 1358 calculé par l'API de Render (71,5 %).
+- **Alternatives écartées :** redémarrer l'application à la main après chaque
+  plantage (le problème peut revenir à chaque réveil) ; verrou explicite dans
+  chaque page (plus de code, même effet).
+
 ---
 
 ## Architecture et outillage
@@ -1042,7 +1069,7 @@ lime 0.2.0.1.
   nettoyer à la main avant chaque commit (oubli possible) ; outil externe
   (nbstripout, dépendance supplémentaire).
 
-### A09. Installation du paquet `credit_scoring` sur Streamlit Community Cloud — à tester au déploiement
+### A09. Installation du paquet `credit_scoring` sur Streamlit Community Cloud — vérifié au déploiement (D04)
 - **Choix :** le paquet est décrit dans `pyproject.toml` et installé par la
   ligne `-e .` à la fin de `requirements.txt`. Streamlit Community Cloud
   installe `requirements.txt` depuis la racine du dépôt, donc `.` désigne le

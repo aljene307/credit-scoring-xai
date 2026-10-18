@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+import credit_scoring.demarrage  # noqa: F401  scikit-learn et scipy chargés une fois, avant les pages
+
 st.set_page_config(page_title="Scoring de crédit explicable", layout="wide")
 
 navigation = st.navigation(

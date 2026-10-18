@@ -16,14 +16,15 @@ logistique, arbre de décision) et **2 modèles ensemblistes** (Random Forest, X
 
 | | |
 |---|---|
-| Application en ligne | *lien ajouté après le déploiement* |
+| Application en ligne | <https://credit-scoring-xai.streamlit.app> |
 | API en ligne | <https://credit-scoring-xai-api.onrender.com> — documentation interactive : [`/docs`](https://credit-scoring-xai-api.onrender.com/docs) |
 | Notebook d'analyse | [`notebooks/analyse_credit.ipynb`](notebooks/analyse_credit.ipynb) |
 | One-pager (synthèse en une page) | [`docs/one-pager/one-pager.pdf`](docs/one-pager/one-pager.pdf) |
 | Journal des choix (chaque décision, sa raison, l'alternative écartée) | [`docs/CHOIX.md`](docs/CHOIX.md) |
 
-L'API est hébergée gratuitement : après 15 minutes sans requête, elle se met en veille et la requête
-suivante peut prendre environ une minute.
+L'application et l'API sont hébergées gratuitement : après une période sans visite, elles se mettent en
+veille, et le premier affichage peut prendre environ une minute. L'API se met en veille après 15 minutes
+sans requête.
 
 ## Aperçu
 
@@ -108,7 +109,7 @@ dans `data/`. Les modèles entraînés sont fournis dans `models/`.
 
 Si l'API ne répond pas, l'application calcule les explications elle-même et l'indique.
 
-**Les tests** (environ 5 minutes) :
+**Les tests** (1 à 5 minutes) :
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
@@ -162,8 +163,9 @@ simple pour essayer : la page [`/docs`](https://credit-scoring-xai-api.onrender.
   `uvicorn api.main:app --host 0.0.0.0 --port $PORT`, contrôle de santé `/sante`. Au démarrage, l'API
   lit seulement les deux modèles XGBoost et un paquet de 48 Ko (`models/demarrage_api.joblib`) : elle
   n'a pas besoin du jeu de données.
-- **Application** : Streamlit Community Cloud, fichier de démarrage `app/Accueil.py`, Python 3.11,
-  réglage `API_URL` dans les « Secrets » de l'application.
+- **Application** : Streamlit Community Cloud (<https://credit-scoring-xai.streamlit.app>), fichier
+  de démarrage `app/Accueil.py`, Python 3.11, réglages `API_URL` et `API_TIMEOUT` dans les
+  « Secrets » de l'application.
 
 ## Structure du dépôt
 
