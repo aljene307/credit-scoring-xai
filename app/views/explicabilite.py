@@ -226,7 +226,8 @@ def explain_client(client_id: int) -> None:
     c1, c2, c3 = st.columns(3)
     c1.metric("Probabilité de défaut", f"{proba:.1%}")
     c2.metric("Seuil recommandé", f"{threshold:.1%}")
-    c3.metric("Décision", "Signalé comme risqué" if proba >= threshold else "Non signalé")
+    c3.metric("Décision", "Signalé" if proba >= threshold else "Non signalé",
+              help="Signalé comme risqué : la probabilité atteint le seuil recommandé.")
     if fictive:
         st.caption("Client fictif : valeurs modifiées dans le formulaire.")
     else:

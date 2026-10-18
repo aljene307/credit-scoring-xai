@@ -29,6 +29,14 @@ def _layout(fig: go.Figure, title: str, x_title: str = "", y_title: str = "") ->
     return fig
 
 
+def _legend_below(fig: go.Figure) -> go.Figure:
+    """Légende sous le graphique : avec plusieurs séries aux noms longs, une légende en haut
+    passe sur plusieurs lignes et chevauche le titre (constaté sur les courbes ROC)."""
+    fig.update_layout(legend={"orientation": "h", "yanchor": "top", "y": -0.18, "x": 0},
+                      margin={"t": 60, "l": 10, "r": 10, "b": 110})
+    return fig
+
+
 def class_balance_figure(balance: pd.DataFrame, class_names: dict) -> go.Figure:
     """Barres : effectif de chaque classe, part en étiquette."""
     fig = go.Figure(
@@ -128,8 +136,8 @@ def roc_figure(y_true, probas: dict, labels: dict, thresholds: dict) -> go.Figur
                         hovertemplate=f"{labels[name]} au seuil {thresholds[name]:.3f}<extra></extra>")
     fig = _layout(fig, "Courbes ROC (test)", x_title="Taux de bons clients signalés à tort",
                   y_title="Taux de défauts détectés (rappel)")
-    fig.update_layout(height=480)
-    return fig
+    fig.update_layout(height=540)
+    return _legend_below(fig)
 
 
 def precision_recall_figure(y_true, probas: dict, labels: dict, thresholds: dict) -> go.Figure:
@@ -149,8 +157,8 @@ def precision_recall_figure(y_true, probas: dict, labels: dict, thresholds: dict
                         hovertemplate=f"{labels[name]} au seuil {thresholds[name]:.3f}<extra></extra>")
     fig = _layout(fig, "Courbes précision-rappel (test)", x_title="Rappel (défauts détectés)",
                   y_title="Précision (vrais défauts parmi les signalés)")
-    fig.update_layout(height=480, yaxis_range=[0, 1.02])
-    return fig
+    fig.update_layout(height=540, yaxis_range=[0, 1.02])
+    return _legend_below(fig)
 
 
 def confusion_figure(counts: dict) -> go.Figure:
@@ -245,8 +253,8 @@ def permutation_figure(table: pd.DataFrame, labels: dict, top: int = 10) -> go.F
                         hovertemplate="%{y}<br>baisse d'AUC %{x:.4f}<extra>%{fullData.name}</extra>")
     fig = _layout(fig, "Importance par permutation (test, ± écart-type sur 10 répétitions)",
                   x_title="Baisse d'AUC quand la variable est mélangée")
-    fig.update_layout(height=460)
-    return fig
+    fig.update_layout(height=520)
+    return _legend_below(fig)
 
 
 def _value_rank(values: pd.Series) -> np.ndarray:
@@ -317,6 +325,7 @@ def waterfall_figure(contributions: pd.Series, client: pd.Series, base: float, s
         measure=["absolute"] + ["relative"] * len(steps) + ["total"],
         text=[f"{base * factor:.2f}"] + [f"{s:+.2f}" for s in steps] + [f"{total:.2f}"],
         textposition="outside",
+        cliponaxis=False,  # sinon les étiquettes proches du bord sont coupées (« +1. »)
         increasing={"marker": {"color": UP}},
         decreasing={"marker": {"color": DOWN}},
         totals={"marker": {"color": MUTED}},
@@ -325,7 +334,8 @@ def waterfall_figure(contributions: pd.Series, client: pd.Series, base: float, s
     ))
     fig.update_yaxes(autorange="reversed")
     fig = _layout(fig, f"Contributions SHAP ({unit})", x_title=unit)
-    fig.update_layout(height=max(420, 30 * (len(order) + 3) + 120), showlegend=False)
+    fig.update_layout(height=max(420, 30 * (len(order) + 3) + 120), showlegend=False,
+                      margin={"t": 70, "l": 10, "r": 60, "b": 10})
     return fig
 
 
