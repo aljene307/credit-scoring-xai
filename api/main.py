@@ -6,10 +6,14 @@ Documentation interactive : http://127.0.0.1:8000/docs
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request
 
 from api.schemas import (
+    EXEMPLES_EXPLICATION,
+    EXEMPLES_PREDICTION,
     Client,
     DemandeExplication,
     DemandePrediction,
@@ -32,7 +36,7 @@ async def lifespan(app: FastAPI):
         app.state.erreur = None
     except FileNotFoundError as exc:
         app.state.service = None
-        app.state.erreur = (f"Modèles introuvables ({exc.filename}) : lancez scripts/train.py puis "
+        app.state.erreur = (f"Fichier introuvable ({Path(exc.filename).name}) : lancez scripts/train.py puis "
                             "scripts/expliquer.py.")
     yield
 
@@ -72,14 +76,14 @@ def modele(request: Request, modele: ModeleNom = "sans_sensibles"):
 
 
 @app.post("/predire", response_model=Prediction, summary="Probabilité de défaut d'un client")
-def predire(request: Request, demande: DemandePrediction):
+def predire(request: Request, demande: Annotated[DemandePrediction, Body(openapi_examples=EXEMPLES_PREDICTION)]):
     """Les 23 variables sont toujours attendues ; le modèle `sans_sensibles` ignore les 4 variables
     sensibles et les liste dans `variables_ignorees`."""
     return service(request).predire(demande.client.model_dump(), demande.modele, demande.seuil)
 
 
 @app.post("/expliquer", response_model=Explication, summary="Pourquoi ce score ?")
-def expliquer(request: Request, demande: DemandeExplication):
+def expliquer(request: Request, demande: Annotated[DemandeExplication, Body(openapi_examples=EXEMPLES_EXPLICATION)]):
     """Contributions SHAP (en probabilité : valeur de base + somme = probabilité), règles LIME,
     accord entre les deux méthodes et phrase de synthèse."""
     return service(request).expliquer(demande.client.model_dump(), demande.modele, demande.methodes,

@@ -134,6 +134,23 @@ def test_explanation_adds_up_and_contains_both_methods(api):
     assert only_shap["regles_lime"] is None and only_shap["accord"] is None
 
 
+def test_every_example_shown_in_docs_is_accepted(api):
+    """Régression : sans exemple complet, /docs fabriquait une valeur de seuil refusée par l'API."""
+    client, _, _ = api
+    paths = client.get("/openapi.json").json()["paths"]
+    sent = 0
+    for path, methods in paths.items():
+        if "post" not in methods:
+            continue
+        examples = methods["post"]["requestBody"]["content"]["application/json"].get("examples", {})
+        assert examples, f"{path} n'a pas d'exemple complet dans /docs"
+        for name, example in examples.items():
+            response = client.post(path, json=example["value"])
+            assert response.status_code == 200, f"{path}, exemple {name} : {response.text[:200]}"
+            sent += 1
+    assert sent == 5  # 3 exemples pour /predire, 2 pour /expliquer
+
+
 def test_global_explanations(api):
     client, _, _ = api
     g = client.get("/explications/globales").json()
@@ -141,6 +158,23 @@ def test_global_explanations(api):
     assert set(g["permutation"]) == {"logreg", "xgboost"}
     assert list(g["contribution_moyenne"]) == sorted(g["contribution_moyenne"], key=g["contribution_moyenne"].get,
                                                      reverse=True)
+
+
+def test_api_starts_without_the_dataset(models_dir, monkeypatch):
+    """Paquet de démarrage (choix API05) : aucune lecture ni téléchargement du jeu de données."""
+    directory, _, models, X_test = models_dir
+    monkeypatch.setattr(config, "MODELS_DIR", directory)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("l'API ne doit pas charger le jeu de données")
+
+    monkeypatch.setattr(reference, "load_credit_data", forbidden)
+    monkeypatch.setattr(reference, "reference_split", forbidden)
+    with TestClient(app) as client:
+        response = client.post("/expliquer", json={"client": client_of(X_test), "modele": "complet"})
+    assert response.status_code == 200
+    expected = models["xgboost"].predict_proba(X_test.iloc[[0]])[:, 1][0]
+    assert response.json()["probabilite"] == pytest.approx(expected, abs=1e-7)
 
 
 def test_api_answers_503_when_models_are_missing(tmp_path, monkeypatch):

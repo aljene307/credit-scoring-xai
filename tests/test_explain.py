@@ -83,6 +83,18 @@ def test_lime_returns_signed_weights_for_original_variables(data, pipelines):
     pd.testing.assert_series_equal(weights, again)  # même graine : même explication
 
 
+def test_lime_from_statistics_gives_exactly_the_same_explanation(data, pipelines):
+    """Choix API05 : LIME reconstruit sans les données d'entraînement, à partir de leurs statistiques."""
+    X, _ = data
+    from_data = explain.LimeExplainer(X, CATEGORICAL)
+    from_stats = explain.LimeExplainer.from_stats(from_data.export_stats(), FEATURES, CATEGORICAL)
+    for i in range(3):
+        a = from_data.explain(pipelines["xgboost"], X.iloc[i], num_samples=500, seed=0)
+        b = from_stats.explain(pipelines["xgboost"], X.iloc[i], num_samples=500, seed=0)
+        pd.testing.assert_series_equal(a[0], b[0])
+        pd.testing.assert_series_equal(a[1], b[1])
+
+
 def test_agreement_counts_common_variables_and_signs():
     shap_row = pd.Series({"A": 0.5, "B": -0.3, "C": 0.2, "D": 0.1, "E": 0.05, "F": 0.01})
     lime_w = pd.Series({"A": 0.4, "B": 0.2, "F": 0.3, "G": 0.2, "C": -0.1})

@@ -170,12 +170,46 @@ LIME_FEATURES = 10  # variables du modèle linéaire local (valeur par défaut d
 
 
 class LimeExplainer:
-    """Explication LIME sur les variables d'origine (choix X05)."""
+    """Explication LIME sur les variables d'origine (choix X05).
+
+    Construit à partir des données d'entraînement, ou de leurs seules statistiques
+    (`from_stats`, choix API05) : avec le découpage en quartiles, LIME n'utilise des
+    données que les bornes des quartiles, la moyenne, l'écart-type, le minimum et le
+    maximum de chaque quartile, et la fréquence de chaque valeur.
+    """
 
     def __init__(self, X_train: pd.DataFrame, categorical: list[str]):
         self.features = list(X_train.columns)
         self.categorical = categorical
         self._training = X_train.to_numpy(dtype=float)
+        self._stats = None
+
+    @classmethod
+    def from_stats(cls, stats: dict, features: list[str], categorical: list[str]) -> "LimeExplainer":
+        explainer = cls.__new__(cls)
+        explainer.features, explainer.categorical, explainer._stats = list(features), categorical, stats
+        # LIME exige un tableau pour connaître le nombre de colonnes ; ses valeurs ne servent pas
+        # lorsque les statistiques sont fournies (mise à l'échelle neutralisée par le découpage).
+        explainer._training = np.zeros((1, len(features)))
+        return explainer
+
+    def _categorical_indices(self) -> list[int]:
+        return [self.features.index(c) for c in self.categorical]
+
+    def export_stats(self) -> dict:
+        """Statistiques dont LIME a besoin, calculées comme le ferait son découpage en quartiles."""
+        from lime.discretize import QuartileDiscretizer
+
+        categorical = self._categorical_indices()
+        discretizer = QuartileDiscretizer(self._training, categorical, self.features)
+        bins = {f: np.array(np.percentile(self._training[:, f], [25, 50, 75])) for f in discretizer.to_discretize}
+        discretized = discretizer.discretize(self._training)
+        values, frequencies = {}, {}
+        for f in range(len(self.features)):
+            uniques, counts = np.unique(discretized[:, f], return_counts=True)
+            values[f], frequencies[f] = uniques.tolist(), counts.tolist()
+        return {"means": discretizer.means, "stds": discretizer.stds, "mins": discretizer.mins,
+                "maxs": discretizer.maxs, "bins": bins, "feature_values": values, "feature_frequencies": frequencies}
 
     def explain(self, pipeline, client: pd.Series, num_samples: int, seed: int, num_features: int = 10):
         """Poids LIME par variable (signe = sens de l'effet sur le risque) et règles lisibles."""
@@ -184,12 +218,13 @@ class LimeExplainer:
         explainer = LimeTabularExplainer(
             self._training,
             feature_names=self.features,
-            categorical_features=[self.features.index(c) for c in self.categorical],
+            categorical_features=self._categorical_indices(),
             class_names=["Pas de défaut", "Défaut"],
             mode="classification",
             discretize_continuous=True,
             discretizer="quartile",
             random_state=seed,
+            training_data_stats=self._stats,
         )
 
         def predict(array: np.ndarray) -> np.ndarray:

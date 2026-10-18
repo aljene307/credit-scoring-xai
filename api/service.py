@@ -1,9 +1,11 @@
 """Le « moteur » de l'API : charge une fois les deux modèles XGBoost et leurs explicateurs, puis
 prédit et explique un client. Les mêmes fonctions que l'application (credit_scoring) sont
 utilisées, avec les mêmes réglages : les chiffres sont identiques à ceux de la page 5.
+
+Au démarrage, l'API ne lit que les deux modèles XGBoost et le paquet de démarrage préparé par
+scripts/expliquer.py (choix API05) : ni téléchargement, ni jeu de données.
 """
 
-import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,14 +14,14 @@ import pandas as pd
 import shap
 import sklearn
 import xgboost
-from sklearn.metrics import roc_auc_score
 
-from credit_scoring.config import CATEGORICAL_FEATURES, SENSITIVE_FEATURES
+from credit_scoring.config import CATEGORICAL_FEATURES
 from credit_scoring.explain import (LIME_FEATURES, LIME_SAMPLES, LIME_SEED, LimeExplainer, ShapExplainer,
                                     agreement, summary_sentence, top_features)
-from credit_scoring.global_explanations import SUMMARY, load_global, reference_background
-from credit_scoring.reference import load_reference, reference_split
+from credit_scoring.global_explanations import API_BUNDLE, load_global
 from credit_scoring.training import load_model
+
+FICHIERS = {"complet": "xgboost.joblib", "sans_sensibles": "xgboost_sans_sensibles.joblib"}
 
 NOMS = {"complet": "XGBoost (23 variables)", "sans_sensibles": "XGBoost sans variables sensibles (19 variables)"}
 
@@ -41,40 +43,27 @@ class Variante:
 class Service:
     def __init__(self, models_dir: Path):
         self.models_dir = Path(models_dir)
-        results, models = load_reference(self.models_dir)
-        X_train, X_test, _, y_test = reference_split(results["meta"])
-        summary = json.loads((self.models_dir / SUMMARY).read_text(encoding="utf-8"))
-        self.toutes_variables = list(X_train.columns)
-        self.median_limit = float(X_train["LIMIT_BAL"].median())
-        self.clients_test = len(X_test)
-        sensibles = [c for c in SENSITIVE_FEATURES if c in self.toutes_variables]
-        sans = [c for c in self.toutes_variables if c not in sensibles]
-        self.variantes = {
-            "complet": self._variante(models["xgboost"], self.toutes_variables, X_train, X_test, y_test,
-                                      results["modeles"]["xgboost"]["seuils"]["f1_max"]["seuil"],
-                                      results["modeles"]["xgboost"]["validation_croisee"]["roc_auc"]["moyenne"]),
-            "sans_sensibles": self._variante(load_model(self.models_dir / "xgboost_sans_sensibles.joblib"), sans,
-                                             X_train, X_test, y_test, summary["equite"]["seuil_sans"],
-                                             summary["equite"]["auc_validation_sans"]["moyenne"]),
-        }
+        bundle = load_model(self.models_dir / API_BUNDLE)
+        self.toutes_variables = bundle["variables"]
+        self.median_limit = bundle["mediane_plafond"]
+        self.clients_test = bundle["clients_test"]
+        self.variantes = {}
+        for name, fichier in FICHIERS.items():
+            pipeline, v = load_model(self.models_dir / fichier), bundle["variantes"][name]
+            categorical = [c for c in CATEGORICAL_FEATURES if c in v["variables"]]
+            self.variantes[name] = Variante(
+                pipeline=pipeline,
+                variables=v["variables"],
+                seuil=v["seuil"],
+                auc_validation=v["auc_validation"],
+                auc_test=v["auc_test"],
+                # Mêmes 500 clients de référence que l'application (X03) et statistiques de LIME (API05).
+                shap=ShapExplainer(pipeline, v["fond"], categorical),
+                lime=LimeExplainer.from_stats(v["lime"], v["variables"], categorical),
+                base_probabilite=float(pipeline.predict_proba(v["fond"])[:, 1].mean()),
+            )
         self.versions = {"scikit-learn": sklearn.__version__, "xgboost": xgboost.__version__,
                          "shap": shap.__version__}
-
-    @staticmethod
-    def _variante(pipeline, variables, X_train, X_test, y_test, seuil, auc_validation) -> Variante:
-        categorical = [c for c in CATEGORICAL_FEATURES if c in variables]
-        # Même échantillon de référence que l'application : 500 clients stratifiés sur le score (X03).
-        background = reference_background(pipeline, X_train[variables])
-        return Variante(
-            pipeline=pipeline,
-            variables=variables,
-            seuil=float(seuil),
-            auc_validation=float(auc_validation),
-            auc_test=float(roc_auc_score(y_test, pipeline.predict_proba(X_test[variables])[:, 1])),
-            shap=ShapExplainer(pipeline, background, categorical),
-            lime=LimeExplainer(X_train[variables], categorical),
-            base_probabilite=float(pipeline.predict_proba(background)[:, 1].mean()),
-        )
 
     def ignorees(self, modele: str) -> list[str]:
         return [c for c in self.toutes_variables if c not in self.variantes[modele].variables]

@@ -23,6 +23,7 @@ from credit_scoring.training import make_cv, save_model
 
 SHAP_MODELS = ("xgboost", "logreg")  # choix X05
 SUMMARY = "explications.json"
+API_BUNDLE = "demarrage_api.joblib"
 
 
 def reference_background(pipeline, X_train: pd.DataFrame, size: int = 500) -> pd.DataFrame:
@@ -115,7 +116,42 @@ def compute_and_save(
     log(f"équité : {summary['durees_s']['equite']} s")
 
     (models_dir / SUMMARY).write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    size = build_api_bundle(models_dir, reference, without, results, summary, X_train, X_test, y_test, categorical)
+    log(f"paquet de démarrage de l'API : {size / 1e3:.0f} Ko")
     return summary
+
+
+def build_api_bundle(models_dir, complete, without, results, summary, X_train, X_test, y_test, categorical) -> int:
+    """Tout ce dont l'API a besoin au démarrage, pour ne pas recharger le jeu de données (choix API05).
+
+    Pour chaque modèle servi : ses variables, ses 500 clients de référence pour SHAP (même tirage
+    stratifié que l'application), les statistiques de LIME, son seuil et ses AUC. Retourne la
+    taille du fichier en octets.
+    """
+    from sklearn.metrics import roc_auc_score
+
+    from credit_scoring.explain import LimeExplainer
+
+    sensitive = [c for c in SENSITIVE_FEATURES if c in X_train]
+    variants = {
+        "complet": (complete, list(X_train.columns), results["modeles"]["xgboost"]["seuils"]["f1_max"]["seuil"],
+                    results["modeles"]["xgboost"]["validation_croisee"]["roc_auc"]["moyenne"]),
+        "sans_sensibles": (without, [c for c in X_train.columns if c not in sensitive], summary["equite"]["seuil_sans"],
+                           summary["equite"]["auc_validation_sans"]["moyenne"]),
+    }
+    bundle = {"variables": list(X_train.columns), "mediane_plafond": float(X_train["LIMIT_BAL"].median()),
+              "clients_test": len(X_test), "variantes": {}}
+    for name, (pipeline, variables, threshold, auc_validation) in variants.items():
+        cat = [c for c in categorical if c in variables]
+        bundle["variantes"][name] = {
+            "variables": variables,
+            "fond": reference_background(pipeline, X_train[variables]),
+            "lime": LimeExplainer(X_train[variables], cat).export_stats(),
+            "seuil": float(threshold),
+            "auc_validation": float(auc_validation),
+            "auc_test": float(roc_auc_score(y_test, pipeline.predict_proba(X_test[variables])[:, 1])),
+        }
+    return save_model(bundle, Path(models_dir) / API_BUNDLE)
 
 
 def load_global(models_dir: Path) -> dict | None:

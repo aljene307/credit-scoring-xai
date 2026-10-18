@@ -817,9 +817,42 @@ lime 0.2.0.1.
   et retours chariot autour des valeurs de `.env` sont retirés.
 - **Dépendances :** `api/requirements.txt` (celles du projet, plus FastAPI
   0.143.0 et uvicorn 0.54.0), inclus dans `requirements-dev.txt`.
-- **En attente (déploiement) :** au démarrage, l'API recharge le jeu de données
-  (pour l'échantillon de référence de SHAP et les statistiques de LIME) ; à
-  prévoir dans la solution d'hébergement.
+- **Démarrage :** l'API ne recharge plus le jeu de données (API05).
+
+### API05. Paquet de démarrage : l'API démarre sans le jeu de données — retenu
+- **Choix :** `scripts/expliquer.py` enregistre `models/demarrage_api.joblib`
+  (48 Ko) : pour chaque modèle servi, ses variables, ses 500 clients de
+  référence pour SHAP (même tirage stratifié que l'application), les
+  statistiques de LIME, son seuil et ses AUC ; plus la médiane du plafond et
+  le nombre de clients du test. L'API ne lit que ce paquet et les deux modèles
+  XGBoost.
+- **LIME sans données :** avec le découpage en quartiles, LIME n'utilise des
+  données d'entraînement que les bornes des quartiles, la moyenne, l'écart-type,
+  le minimum et le maximum de chaque quartile, et la fréquence de chaque valeur
+  (sa mise à l'échelle est neutralisée). Ces statistiques lui sont fournies par
+  son mécanisme officiel (`training_data_stats`).
+- **Preuve (client 1358 et 20 clients du test, les deux modèles) :** mêmes 500
+  clients de référence, même valeur de base, écart SHAP maximal 0, poids et
+  règles LIME identiques 21 fois sur 21, phrases identiques 21 fois sur 21.
+  Deux tests le vérifient (LIME par statistiques identique à LIME par données ;
+  l'API démarre et répond quand tout chargement du jeu de données échoue).
+- **Mesures :** démarrage en environ 1 s ; mémoire 274 Mo après démarrage,
+  pic de 287 Mo (contre 315 et 360 Mo en rechargeant les données et les quatre
+  modèles), pour 512 Mo disponibles sur l'offre gratuite de Render.
+- **Limite :** les 2 × 500 clients de référence sont de vraies lignes du jeu
+  (1,7 % des clients), sous la même licence CC BY 4.0.
+- **Alternatives écartées :** livrer le cache Parquet du jeu (contraire à la
+  règle « données téléchargées hors du dépôt ») ; télécharger le jeu pendant la
+  construction du service (dépendance à l'UCI à chaque déploiement).
+
+### API06. Exemples complets dans /docs, tous testés — retenu
+- **Constat :** sans exemple fourni, la page `/docs` fabriquait elle-même une
+  valeur pour `seuil` à partir de sa seule contrainte, et pouvait proposer
+  `"seuil": 1`, refusé par l'API.
+- **Choix :** chaque endpoint `POST` propose des exemples complets et valides
+  (client 1358 avec chaque modèle, seuil personnalisé de 0,5 ; SHAP et LIME, ou
+  SHAP seul). Un test lit les exemples publiés dans `/docs` et les envoie tous à
+  l'API : chacun doit être accepté.
 
 ---
 

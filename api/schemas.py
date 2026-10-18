@@ -24,6 +24,32 @@ EXEMPLE_CLIENT = {
 }
 
 
+EXEMPLES_PREDICTION = {
+    "client_1358_complet": {
+        "summary": "Client 1358, modèle complet (celui de l'application)",
+        "value": {"client": EXEMPLE_CLIENT, "modele": "complet"},
+    },
+    "client_1358_sans_sensibles": {
+        "summary": "Client 1358, modèle sans variables sensibles (recommandé au déploiement)",
+        "value": {"client": EXEMPLE_CLIENT, "modele": "sans_sensibles"},
+    },
+    "seuil_personnalise": {
+        "summary": "Client 1358, seuil de décision choisi (0,5)",
+        "value": {"client": EXEMPLE_CLIENT, "modele": "complet", "seuil": 0.5},
+    },
+}
+EXEMPLES_EXPLICATION = {
+    "client_1358_complet": {
+        "summary": "Client 1358, SHAP et LIME, modèle complet",
+        "value": {"client": EXEMPLE_CLIENT, "modele": "complet", "methodes": ["shap", "lime"], "nombre_variables": 5},
+    },
+    "client_1358_sans_sensibles_shap": {
+        "summary": "Client 1358, SHAP seulement, modèle sans variables sensibles",
+        "value": {"client": EXEMPLE_CLIENT, "modele": "sans_sensibles", "methodes": ["shap"], "nombre_variables": 5},
+    },
+}
+
+
 class Client(BaseModel):
     """Les 23 variables d'un client, avec les codes du jeu Taiwan après recodage."""
 
