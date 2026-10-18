@@ -64,7 +64,9 @@ def _call(method: str, path: str, timeout: float | None = None, **kwargs) -> tup
     return response.json(), (time.perf_counter() - start) * 1000
 
 
-def sante(timeout: float = 2.0) -> dict:
+def sante(timeout: float | None = None) -> dict:
+    """État de l'API. Par défaut, même délai que les autres appels (API_TIMEOUT) : une API
+    hébergée gratuitement peut mettre du temps à sortir de veille."""
     return _call("GET", "/sante", timeout=timeout)[0]
 
 

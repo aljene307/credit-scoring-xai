@@ -868,6 +868,23 @@ lime 0.2.0.1.
   après 15 minutes sans requête, réveil en environ une minute, 750 heures par
   mois. Render peut demander une carte bancaire pour une vérification
   anti-fraude : si c'est le cas, on s'arrête et on choisit une autre solution.
+- **Service déployé :** <https://credit-scoring-xai-api.onrender.com>
+  (documentation : `/docs`). Python 3.11.9, construction
+  `pip install -r api/requirements.txt`, démarrage
+  `uvicorn api.main:app --host 0.0.0.0 --port $PORT`, contrôle de santé `/sante`.
+  Aucune carte bancaire demandée à l'inscription. Avant le déploiement, le même
+  processus a été rejoué sur un clone neuf du dépôt (sans dossier `data/`) :
+  installation réussie, client 1358 à 0,7147.
+- **Mesures en ligne (client 1358, depuis le PC de développement) :**
+  `POST /predire` 0,3 s ; `POST /expliquer` 2,2 à 2,8 s, dont 1,8 à 2,2 s de
+  calcul chez Render (0,36 s sur le PC de développement, soit environ 6 fois
+  plus lent avec 0,1 cœur). Probabilité identique : 0,7147.
+- **Mise en veille :** après **15 minutes sans requête**, le service s'arrête ; la
+  requête suivante le réveille en environ une minute. L'application attend
+  jusqu'à `API_TIMEOUT` (30 s conseillées) : si le réveil est plus long, elle
+  bascule en calcul local et l'indique, puis réessaie l'API au bout de 30 s.
+  Correction associée : la vérification de santé utilisait un délai fixe de 2 s ;
+  elle utilise désormais `API_TIMEOUT`.
 - **Alternatives écartées :** Space Docker de Hugging Face (désormais réservé aux
   comptes payants : « Gradio and Docker Spaces … require a paid plan ») ; Koyeb
   (mêmes limites, carte bancaire signalée par certaines sources) ; API dans le

@@ -191,6 +191,28 @@ def test_dotenv_values_are_cleaned(tmp_path):
     assert values == {"API_URL": "http://127.0.0.1:8000/", "API_TIMEOUT": "5"}
 
 
+def test_health_check_uses_the_configured_timeout(monkeypatch):
+    """Régression : la vérification de santé utilisait un délai fixe de 2 s, trop court pour une
+    API qui sort de veille."""
+    seen = {}
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"statut": "ok"}
+
+    def fake_request(method, url, timeout, **kwargs):
+        seen.update(url=url, timeout=timeout)
+        return Response()
+
+    monkeypatch.setenv("API_URL", "https://exemple.onrender.com/")
+    monkeypatch.setenv("API_TIMEOUT", "30")
+    monkeypatch.setattr(api_client.requests, "request", fake_request)
+    api_client.sante()
+    assert seen == {"url": "https://exemple.onrender.com/sante", "timeout": 30.0}
+
+
 def test_client_raises_when_the_api_is_unreachable():
     with pytest.raises(api_client.ApiIndisponible):
         api_client.sante(timeout=0.5)
