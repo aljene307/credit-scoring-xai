@@ -12,6 +12,7 @@ navigation = st.navigation(
         st.Page("views/modelisation.py", title="3. Modélisation"),
         st.Page("views/evaluation.py", title="4. Évaluation"),
         st.Page("views/explicabilite.py", title="5. Explicabilité"),
+        st.Page("views/api_demo.py", title="6. API"),
     ]
 )
 navigation.run()

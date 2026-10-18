@@ -758,6 +758,71 @@ lime 0.2.0.1.
 
 ---
 
+## API d'interprétation (module 6)
+
+### API01. Cinq endpoints — retenu
+| Endpoint | Rôle |
+|---|---|
+| `GET /sante` | L'API répond-elle ? Modèles disponibles, versions |
+| `GET /modele?modele=…` | Variables attendues et ignorées, seuil recommandé et méthode, AUC de validation et de test |
+| `POST /predire` | Probabilité de défaut d'un client, décision au seuil (recommandé ou fourni) |
+| `POST /expliquer` | Contributions SHAP (en probabilité), règles LIME, accord SHAP / LIME, phrase de synthèse |
+| `GET /explications/globales` | Contribution SHAP moyenne (1 000 clients, modèle complet), importance par permutation des 4 modèles |
+
+- **Raison :** couvre la prédiction, l'explication locale et globale, et ce
+  qu'il faut savoir pour appeler l'API ; documentation automatique sur `/docs`.
+- **Alternatives écartées :** `POST /predire/lot` (plusieurs clients à la fois,
+  inutile pour l'application) ; `GET /clients/{id}` (une API bancaire ne doit
+  pas exposer les dossiers clients).
+
+### API02. Deux modèles servis, sans variables sensibles par défaut — retenu
+- **Choix :** paramètre `modele` : `complet` (23 variables) ou `sans_sensibles`
+  (19 variables), ce dernier par défaut, conformément à la recommandation de
+  déploiement (X09). L'application indique toujours explicitement le modèle :
+  la page 5 demande `complet`, pour que ses chiffres restent ceux de l'analyse
+  (client 1358 : 71,47 %).
+- **Modèle sans variables sensibles :** l'API accepte quand même les 23
+  variables, ignore SEX, AGE, MARRIAGE et EDUCATION, et les liste dans
+  `variables_ignorees` (vérifié : changer ces 4 variables ne change pas la
+  probabilité). Son seuil (0,2790) est choisi comme les autres (E01) : F1
+  maximal sur les prédictions hors pli de l'entraînement, avec les mêmes
+  5 plis. AUC test 0,7762 (modèle complet : 0,7791).
+- **Limite à citer :** ce modèle reprend les hyperparamètres du modèle complet,
+  sans GridSearch dédié (AUC de validation 0,7841, à 0,002 du modèle complet).
+
+### API03. Lien avec l'application : la page 5 passe par l'API — retenu
+- **Choix :** pour XGBoost, l'explication d'un client (page 5) est demandée à
+  l'API ; si elle ne répond pas (disponibilité vérifiée au plus toutes les
+  30 s), l'application calcule elle-même. La source est toujours affichée :
+  « Résultat calculé par l'API … en 360 ms » ou « Calcul local : l'API ne
+  répond pas (raison) ». La régression logistique, que l'API ne sert pas, est
+  toujours calculée localement, et la page le dit. La page « 6. API » montre
+  l'état de l'API, les deux modèles, une requête et sa réponse brute.
+- **Vérifié de bout en bout :** API lancée → page 5 « calculé par l'API »,
+  71,5 % ; API arrêtée → « calcul local », mêmes chiffres. L'API et la page
+  utilisent les mêmes fonctions et les mêmes réglages (500 clients de
+  référence stratifiés, LIME à 10 000 voisins et 10 variables, graine 42).
+- **Alternative écartée :** seule la page 6 appelle l'API (l'API ne servirait
+  alors qu'à une démonstration).
+
+### API04. Format des échanges — retenu
+- **Choix :** JSON aux champs en français (`probabilite`, `decision`,
+  `variables_ignorees`, `phrase`…) avec les noms de variables du jeu
+  (`LIMIT_BAL`, `PAY_0`…). Chaque demande est vérifiée par Pydantic :
+  variable absente, en trop ou hors des valeurs autorisées (`SEX` ∈ {1, 2},
+  `PAY_*` de −2 à 8, âge de 18 à 100…) → refus avec le code 422.
+- **Limite :** les messages de refus sont rédigés en anglais par Pydantic.
+- **Adresse de l'API côté application :** variable d'environnement `API_URL`,
+  sinon fichier `.env`, sinon `http://127.0.0.1:8000` ; les espaces, guillemets
+  et retours chariot autour des valeurs de `.env` sont retirés.
+- **Dépendances :** `api/requirements.txt` (celles du projet, plus FastAPI
+  0.143.0 et uvicorn 0.54.0), inclus dans `requirements-dev.txt`.
+- **En attente (déploiement) :** au démarrage, l'API recharge le jeu de données
+  (pour l'échantillon de référence de SHAP et les statistiques de LIME) ; à
+  prévoir dans la solution d'hébergement.
+
+---
+
 ## Architecture et outillage
 
 ### A01. Code partagé dans un paquet `src/credit_scoring` — retenu

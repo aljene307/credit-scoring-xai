@@ -164,8 +164,13 @@ def _restore_types(frame: pd.DataFrame, categorical: list[str]) -> pd.DataFrame:
     return frame
 
 
+LIME_SAMPLES = 10_000  # nombre de voisins (choix X07), commun à l'application et à l'API
+LIME_SEED = RANDOM_STATE
+LIME_FEATURES = 10  # variables du modèle linéaire local (valeur par défaut de LimeExplainer.explain)
+
+
 class LimeExplainer:
-    """Explication LIME sur les 23 variables d'origine (choix X05)."""
+    """Explication LIME sur les variables d'origine (choix X05)."""
 
     def __init__(self, X_train: pd.DataFrame, categorical: list[str]):
         self.features = list(X_train.columns)

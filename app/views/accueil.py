@@ -18,7 +18,6 @@ vous pouvez aussi importer votre propre fichier CSV.
 3. **Modélisation** : quatre modèles réglés par GridSearchCV, tableau comparatif.
 4. **Évaluation** : métriques sur le jeu de test, courbes ROC et précision-rappel, seuil, calibration.
 5. **Explicabilité** : importance des variables, SHAP, LIME, explication d'un client, équité.
-
-Le module 6 (API) est en cours de développement.
+6. **API** : le service FastAPI qui prédit et explique un client, appelé par la page 5.
 """
 )

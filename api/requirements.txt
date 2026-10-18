@@ -1,0 +1,4 @@
+# Dépendances de l'API : celles du projet, plus FastAPI et le serveur uvicorn.
+-r ../requirements.txt
+fastapi==0.143.0
+uvicorn==0.54.0

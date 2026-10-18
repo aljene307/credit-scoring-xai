@@ -4,10 +4,13 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from credit_scoring import config
+from credit_scoring import api_client, config
 from credit_scoring.config import CATEGORICAL_FEATURES, LABELS, PAY_STATUS_FEATURES, PAY_STATUS_LABELS
 from credit_scoring.explain import (
     IMPORTANCE_LABELS,
+    LIME_FEATURES,
+    LIME_SAMPLES,
+    LIME_SEED,
     LimeExplainer,
     ShapExplainer,
     agreement,
@@ -27,7 +30,6 @@ from credit_scoring.plots import (
 )
 from credit_scoring.reference import load_reference, reference_split
 
-LIME_SAMPLES = 10_000  # choix X07
 GROUP_NAMES = {"sexe": "le sexe", "âge": "l'âge"}
 SHAP_CHOICES = {"xgboost": "XGBoost (référence)", "logreg": "Régression logistique"}
 LOG_ODDS_NOTE = (
@@ -53,7 +55,7 @@ def global_explanations(path: str, modified: float):
 
 @st.cache_data(show_spinner="Explication LIME (10 000 voisins)…")
 def lime_explanation(_lime, _model, client: pd.Series, key: str):
-    return _lime.explain(_model, client, num_samples=LIME_SAMPLES, seed=config.RANDOM_STATE)
+    return _lime.explain(_model, client, num_samples=LIME_SAMPLES, seed=LIME_SEED)
 
 
 def client_form(client: pd.Series, client_id: int) -> pd.Series:
@@ -168,6 +170,47 @@ with tabs[2]:
         )
 
 # --- Explication d'un client -----------------------------------------------------------------------
+@st.cache_data(ttl=30, show_spinner=False)
+def api_available(url: str) -> str | None:
+    """None si l'API répond, sinon la raison. Vérifié au plus toutes les 30 secondes."""
+    try:
+        api_client.sante()
+        return None
+    except api_client.ApiIndisponible as exc:
+        return str(exc)
+
+
+def explanation(client: pd.Series, choice: str, model, threshold: float):
+    """Explication d'un client : par l'API pour XGBoost (modèle complet), sinon calcul local.
+
+    Affiche toujours la source du résultat (choix API03).
+    """
+    if choice == "xgboost":
+        reason = api_available(api_client.api_url())
+        if reason is None:
+            try:
+                data, ms = api_client.expliquer({k: int(v) for k, v in client.items()}, "complet",
+                                                nombre_variables=LIME_FEATURES)
+                st.info(f"Résultat calculé par l'**API** ({api_client.api_url()}, modèle complet) en {ms:.0f} ms.")
+                contributions = pd.Series(data["contributions_shap"])[list(client.index)]
+                weights = pd.Series(data["poids_lime"])
+                rules = pd.Series({r["regle"]: r["poids"] for r in data["regles_lime"]})
+                return data["probabilite"], data["valeur_de_base"], contributions, weights, rules, data["phrase"]
+            except api_client.ApiIndisponible as exc:
+                reason = str(exc)
+        st.warning(f"**Calcul local** : l'API ne répond pas ({reason}). Pour l'utiliser, lancez-la (voir la page 6).")
+    else:
+        st.caption("**Calcul local** : l'API sert uniquement les modèles XGBoost.")
+    row = client.to_frame().T.astype(X_test.dtypes.to_dict())
+    proba = float(model.predict_proba(row)[:, 1][0])
+    values, base = explainers[choice].explain(row)
+    contributions = values.iloc[0]
+    weights, rules = lime_explanation(lime, model, client, f"{choice}-{client.to_dict()}")
+    sentence = summary_sentence(contributions, client, proba, background_proba[choice], threshold,
+                                float(X_train["LIMIT_BAL"].median()))
+    return proba, base, contributions, weights, rules, sentence
+
+
 def explain_client(client_id: int) -> None:
     real = X_test.loc[client_id]
     with st.expander("Modifier ce client (client fictif)"):
@@ -176,13 +219,9 @@ def explain_client(client_id: int) -> None:
             st.session_state.pop("client_modifie", None)
             client = real
     fictive = not client.equals(real)
-    row = client.to_frame().T.astype(X_test.dtypes.to_dict())
-
     model = models[choice]
     threshold = results["modeles"][choice]["seuils"]["f1_max"]["seuil"]
-    proba = float(model.predict_proba(row)[:, 1][0])
-    values, base = explainers[choice].explain(row)
-    contributions = values.iloc[0]
+    proba, base, contributions, weights, rules, sentence = explanation(client, choice, model, threshold)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Probabilité de défaut", f"{proba:.1%}")
@@ -194,8 +233,6 @@ def explain_client(client_id: int) -> None:
         outcome = "a fait défaut" if y_test.loc[client_id] == 1 else "n'a pas fait défaut"
         st.caption(f"Client réel du jeu de test : il {outcome} le mois suivant.")
 
-    sentence = summary_sentence(contributions, client, proba, background_proba[choice], threshold,
-                                float(X_train["LIMIT_BAL"].median()))
     st.success(sentence)
 
     col_shap, col_lime = st.columns(2)
@@ -204,7 +241,6 @@ def explain_client(client_id: int) -> None:
     check = f"{base * 100:.2f} + {contributions.sum() * 100:.2f} = {total * 100:.2f} %" if scale == "probabilité" \
         else f"{base:.3f} + {contributions.sum():.3f} = {total:.3f} log-odds (soit {proba:.1%})"
     col_shap.caption(f"Valeur de base + somme des contributions : {check}.")
-    weights, rules = lime_explanation(lime, model, client, f"{choice}-{client.to_dict()}")
     col_lime.plotly_chart(lime_figure(rules))
     col_lime.caption(
         "LIME fabrique 10 000 clients voisins, observe les prédictions du modèle et ajuste un modèle linéaire "

@@ -1,5 +1,7 @@
-# Outils de développement (tests, notebook). Non installés au déploiement.
--r requirements.txt
+# Outils de développement (tests, notebook) et dépendances de l'API. Non installés au déploiement
+# de l'application. À installer depuis la racine du projet.
+-r api/requirements.txt
+httpx==0.28.1
 ipykernel==7.4.0
 nbconvert==7.17.1
 pytest==9.1.1
