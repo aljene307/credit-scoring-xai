@@ -1,0 +1,237 @@
+{
+  "durees_s": {
+    "shap_xgboost": 73.1,
+    "shap_logreg": 0.2,
+    "permutation_logreg": 11.2,
+    "permutation_arbre": 1.3,
+    "permutation_random_forest": 20.4,
+    "permutation_xgboost": 3.7,
+    "equite": 21.3
+  },
+  "versions": {
+    "python": "3.11.0",
+    "shap": "0.51.0",
+    "scikit-learn": "1.9.1"
+  },
+  "clients_expliques": 1000,
+  "clients_reference": 500,
+  "tirage_reference": "stratifié sur le score de XGBoost",
+  "graine": 42,
+  "shap": {
+    "xgboost": {
+      "echelle": "probabilité",
+      "valeur_de_base": 0.22158454791902338
+    },
+    "logreg": {
+      "echelle": "log-odds",
+      "valeur_de_base": -1.4763837742327928
+    }
+  },
+  "equite": {
+    "variables_sensibles": [
+      "SEX",
+      "AGE",
+      "MARRIAGE",
+      "EDUCATION"
+    ],
+    "auc_validation_sans": {
+      "moyenne": 0.7841021975391655,
+      "ecart_type": 0.005149506021092237
+    },
+    "auc_validation_avec": {
+      "moyenne": 0.7859789962226644,
+      "ecart_type": 0.005433319746625809
+    },
+    "seuil_sans": 0.27903398871421814,
+    "relais": [
+      {
+        "variable": "SEX",
+        "mesure": "AUC",
+        "score": 0.5983035861047558,
+        "repère": "bonnes réponses 62.0% (modalité la plus fréquente : 60.5%)"
+      },
+      {
+        "variable": "AGE",
+        "mesure": "R²",
+        "score": 0.03555987018086404,
+        "repère": "erreur moyenne 7.4 ans (sans modèle : 7.5 ans)"
+      },
+      {
+        "variable": "MARRIAGE",
+        "mesure": "AUC",
+        "score": 0.5896919437228879,
+        "repère": "bonnes réponses 55.1% (modalité la plus fréquente : 53.4%)"
+      },
+      {
+        "variable": "EDUCATION",
+        "mesure": "AUC",
+        "score": 0.63754510382883,
+        "repère": "bonnes réponses 53.0% (modalité la plus fréquente : 46.9%)"
+      }
+    ],
+    "groupes": {
+      "sexe": {
+        "avec": {
+          "tableau": [
+            {
+              "groupe": "Femme",
+              "clients": 3598,
+              "taux de défaut (%)": 21.289605336297942,
+              "proba. moyenne (%)": 21.34181022644043,
+              "clients signalés (%)": 21.678710394663703,
+              "rappel (%)": 54.83028720626631,
+              "faux positifs (%)": 12.711864406779661
+            },
+            {
+              "groupe": "Homme",
+              "clients": 2402,
+              "taux de défaut (%)": 23.355537052456288,
+              "proba. moyenne (%)": 23.301240921020508,
+              "clients signalés (%)": 26.769358867610325,
+              "rappel (%)": 57.57575757575758,
+              "faux positifs (%)": 17.381857686040195
+            }
+          ],
+          "tests": {
+            "rappel": 0.3475709516933927,
+            "faux positifs": 1.1801248726958998e-05
+          }
+        },
+        "sans": {
+          "tableau": [
+            {
+              "groupe": "Femme",
+              "clients": 3598,
+              "taux de défaut (%)": 21.289605336297942,
+              "proba. moyenne (%)": 21.592914581298828,
+              "clients signalés (%)": 21.372984991662033,
+              "rappel (%)": 54.699738903394255,
+              "faux positifs (%)": 12.358757062146893
+            },
+            {
+              "groupe": "Homme",
+              "clients": 2402,
+              "taux de défaut (%)": 23.355537052456288,
+              "proba. moyenne (%)": 22.80405616760254,
+              "clients signalés (%)": 24.895920066611158,
+              "rappel (%)": 54.90196078431373,
+              "faux positifs (%)": 15.752308527973927
+            }
+          ],
+          "tests": {
+            "rappel": 0.9862048297740453,
+            "faux positifs": 0.0011400013800079072
+          }
+        }
+      },
+      "âge": {
+        "avec": {
+          "tableau": [
+            {
+              "groupe": "21-25 ans",
+              "clients": 767,
+              "taux de défaut (%)": 25.554106910039113,
+              "proba. moyenne (%)": 27.303504943847656,
+              "clients signalés (%)": 32.724902216427644,
+              "rappel (%)": 66.3265306122449,
+              "faux positifs (%)": 21.19089316987741
+            },
+            {
+              "groupe": "26-35 ans",
+              "clients": 2492,
+              "taux de défaut (%)": 19.662921348314608,
+              "proba. moyenne (%)": 19.864370346069336,
+              "clients signalés (%)": 19.78330658105939,
+              "rappel (%)": 51.42857142857142,
+              "faux positifs (%)": 12.03796203796204
+            },
+            {
+              "groupe": "36-45 ans",
+              "clients": 1775,
+              "taux de défaut (%)": 22.366197183098592,
+              "proba. moyenne (%)": 21.74677848815918,
+              "clients signalés (%)": 22.422535211267604,
+              "rappel (%)": 53.40050377833753,
+              "faux positifs (%)": 13.497822931785198
+            },
+            {
+              "groupe": "46-55 ans",
+              "clients": 788,
+              "taux de défaut (%)": 25.12690355329949,
+              "proba. moyenne (%)": 24.313020706176758,
+              "clients signalés (%)": 28.045685279187815,
+              "rappel (%)": 60.1010101010101,
+              "faux positifs (%)": 17.28813559322034
+            },
+            {
+              "groupe": "56 ans et +",
+              "clients": 178,
+              "taux de défaut (%)": 25.842696629213485,
+              "proba. moyenne (%)": 25.586620330810547,
+              "clients signalés (%)": 33.70786516853933,
+              "rappel (%)": 65.21739130434783,
+              "faux positifs (%)": 22.727272727272727
+            }
+          ],
+          "tests": {
+            "rappel": 0.0022462181575311786,
+            "faux positifs": 1.4487875402932207e-08
+          }
+        },
+        "sans": {
+          "tableau": [
+            {
+              "groupe": "21-25 ans",
+              "clients": 767,
+              "taux de défaut (%)": 25.554106910039113,
+              "proba. moyenne (%)": 28.034263610839844,
+              "clients signalés (%)": 33.116036505867015,
+              "rappel (%)": 67.3469387755102,
+              "faux positifs (%)": 21.36602451838879
+            },
+            {
+              "groupe": "26-35 ans",
+              "clients": 2492,
+              "taux de défaut (%)": 19.662921348314608,
+              "proba. moyenne (%)": 20.40835952758789,
+              "clients signalés (%)": 20.024077046548957,
+              "rappel (%)": 52.04081632653062,
+              "faux positifs (%)": 12.187812187812188
+            },
+            {
+              "groupe": "36-45 ans",
+              "clients": 1775,
+              "taux de défaut (%)": 22.366197183098592,
+              "proba. moyenne (%)": 21.179012298583984,
+              "clients signalés (%)": 21.295774647887324,
+              "rappel (%)": 52.141057934508815,
+              "faux positifs (%)": 12.409288824383163
+            },
+            {
+              "groupe": "46-55 ans",
+              "clients": 788,
+              "taux de défaut (%)": 25.12690355329949,
+              "proba. moyenne (%)": 23.106918334960938,
+              "clients signalés (%)": 24.61928934010152,
+              "rappel (%)": 56.56565656565656,
+              "faux positifs (%)": 13.898305084745763
+            },
+            {
+              "groupe": "56 ans et +",
+              "clients": 178,
+              "taux de défaut (%)": 25.842696629213485,
+              "proba. moyenne (%)": 24.18958282470703,
+              "clients signalés (%)": 23.595505617977526,
+              "rappel (%)": 45.65217391304348,
+              "faux positifs (%)": 15.909090909090908
+            }
+          ],
+          "tests": {
+            "rappel": 0.0020228187629389538,
+            "faux positifs": 5.180399892882922e-07
+          }
+        }
+      }
+    }
+  }
+}

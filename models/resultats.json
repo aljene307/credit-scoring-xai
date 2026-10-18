@@ -1,0 +1,299 @@
+{
+  "modeles": {
+    "logreg": {
+      "modele": "logreg",
+      "libelle": "Régression logistique",
+      "combinaisons": 4,
+      "entrainements": 20,
+      "duree_s": 6.1,
+      "meilleurs_hyperparametres": {
+        "C": 10
+      },
+      "bord_de_grille": [
+        "C"
+      ],
+      "proba_moyenne_hors_pli": 0.22113689801702943,
+      "taux_reel_entrainement": 0.22120833333333334,
+      "validation_croisee": {
+        "roc_auc": {
+          "moyenne": 0.7271862805196485,
+          "ecart_type": 0.01153490701187565
+        },
+        "pr_auc": {
+          "moyenne": 0.5068074559291228,
+          "ecart_type": 0.012332229162669855
+        },
+        "f1": {
+          "moyenne": 0.36556193919093966,
+          "ecart_type": 0.01462728839009484
+        },
+        "rappel": {
+          "moyenne": 0.2461856863173178,
+          "ecart_type": 0.012241428468130216
+        },
+        "precision": {
+          "moyenne": 0.7107249743176004,
+          "ecart_type": 0.017222190585866666
+        }
+      },
+      "auc_entrainement": 0.729996327026947,
+      "seuils": {
+        "f1_max": {
+          "seuil": 0.29074168464186023,
+          "precision": 0.5550259965337955,
+          "rappel": 0.4825767564513091,
+          "f1": 0.516272040302267,
+          "part_signales": 0.19233333333333333
+        },
+        "ks": {
+          "seuil": 0.26023094432960164,
+          "precision": 0.48253275109170307,
+          "rappel": 0.5411565266528536,
+          "f1": 0.5101660303649117,
+          "part_signales": 0.24808333333333332,
+          "ks": 0.3763178342340424
+        }
+      },
+      "taille_octets": 2889
+    },
+    "arbre": {
+      "modele": "arbre",
+      "libelle": "Arbre de décision",
+      "combinaisons": 48,
+      "entrainements": 240,
+      "duree_s": 16.6,
+      "meilleurs_hyperparametres": {
+        "max_depth": 16,
+        "min_samples_leaf": 400
+      },
+      "bord_de_grille": [],
+      "proba_moyenne_hors_pli": 0.22110469433212998,
+      "taux_reel_entrainement": 0.22120833333333334,
+      "validation_croisee": {
+        "roc_auc": {
+          "moyenne": 0.7706949369916737,
+          "ecart_type": 0.004096621051026961
+        },
+        "pr_auc": {
+          "moyenne": 0.5278029703810744,
+          "ecart_type": 0.0075436910685112235
+        },
+        "f1": {
+          "moyenne": 0.48660774894989595,
+          "ecart_type": 0.004527206708305991
+        },
+        "rappel": {
+          "moyenne": 0.3833128324733622,
+          "ecart_type": 0.004989351366990762
+        },
+        "precision": {
+          "moyenne": 0.6663437135055068,
+          "ecart_type": 0.01148095048182027
+        }
+      },
+      "auc_entrainement": 0.7857996638603592,
+      "seuils": {
+        "f1_max": {
+          "seuil": 0.2624521072796935,
+          "precision": 0.47738542449286253,
+          "rappel": 0.5984177811263891,
+          "f1": 0.5310932798395186,
+          "part_signales": 0.27729166666666666
+        },
+        "ks": {
+          "seuil": 0.25121951219512195,
+          "precision": 0.460944085417252,
+          "rappel": 0.6180071576568092,
+          "f1": 0.5280437756497948,
+          "part_signales": 0.2965833333333333,
+          "ks": 0.41272119114886424
+        }
+      },
+      "taille_octets": 5557
+    },
+    "random_forest": {
+      "modele": "random_forest",
+      "libelle": "Random Forest",
+      "combinaisons": 12,
+      "entrainements": 60,
+      "duree_s": 260.0,
+      "meilleurs_hyperparametres": {
+        "max_depth": null,
+        "max_features": "sqrt",
+        "min_samples_leaf": 10
+      },
+      "bord_de_grille": [
+        "max_depth",
+        "min_samples_leaf"
+      ],
+      "proba_moyenne_hors_pli": 0.22313050252397504,
+      "taux_reel_entrainement": 0.22120833333333334,
+      "validation_croisee": {
+        "roc_auc": {
+          "moyenne": 0.7845255478036053,
+          "ecart_type": 0.004763641105950025
+        },
+        "pr_auc": {
+          "moyenne": 0.5595070426145877,
+          "ecart_type": 0.008834761593350957
+        },
+        "f1": {
+          "moyenne": 0.47318746399804834,
+          "ecart_type": 0.006745417853900209
+        },
+        "rappel": {
+          "moyenne": 0.36409775804015326,
+          "ecart_type": 0.006431769002260331
+        },
+        "precision": {
+          "moyenne": 0.6759054865057501,
+          "ecart_type": 0.014217940784844545
+        }
+      },
+      "auc_entrainement": 0.9318216533911926,
+      "seuils": {
+        "f1_max": {
+          "seuil": 0.28707700893769855,
+          "precision": 0.5255765562684238,
+          "rappel": 0.5709173102279148,
+          "f1": 0.5473094980137234,
+          "part_signales": 0.24029166666666665
+        },
+        "ks": {
+          "seuil": 0.2583476143940707,
+          "precision": 0.498216777795007,
+          "rappel": 0.60519871915615,
+          "f1": 0.546521517264841,
+          "part_signales": 0.2687083333333333,
+          "ks": 0.4320672655153603
+        }
+      },
+      "taille_octets": 12294224
+    },
+    "xgboost": {
+      "modele": "xgboost",
+      "libelle": "XGBoost",
+      "combinaisons": 81,
+      "entrainements": 405,
+      "duree_s": 241.8,
+      "meilleurs_hyperparametres": {
+        "learning_rate": 0.01,
+        "max_depth": 5,
+        "n_estimators": 500,
+        "subsample": 0.4
+      },
+      "bord_de_grille": [
+        "learning_rate",
+        "max_depth",
+        "subsample"
+      ],
+      "proba_moyenne_hors_pli": 0.22053495049476624,
+      "taux_reel_entrainement": 0.22120833333333334,
+      "validation_croisee": {
+        "roc_auc": {
+          "moyenne": 0.7859789962226644,
+          "ecart_type": 0.005433319746625809
+        },
+        "pr_auc": {
+          "moyenne": 0.5655285265905261,
+          "ecart_type": 0.008829303027430868
+        },
+        "f1": {
+          "moyenne": 0.4780913957603657,
+          "ecart_type": 0.006576449766226353
+        },
+        "rappel": {
+          "moyenne": 0.36861948451430704,
+          "ecart_type": 0.004796765024345386
+        },
+        "precision": {
+          "moyenne": 0.6802302893313499,
+          "ecart_type": 0.01511379814086325
+        }
+      },
+      "auc_entrainement": 0.8310908444234745,
+      "seuils": {
+        "f1_max": {
+          "seuil": 0.26850053668022156,
+          "precision": 0.5261789181692095,
+          "rappel": 0.5716707477867772,
+          "f1": 0.5479823056784328,
+          "part_signales": 0.24033333333333334
+        },
+        "ks": {
+          "seuil": 0.20674799382686615,
+          "precision": 0.4551232166018158,
+          "rappel": 0.6609530985119608,
+          "f1": 0.5390582994085568,
+          "part_signales": 0.32125,
+          "ks": 0.4361925185536921
+        }
+      },
+      "taille_octets": 397828
+    }
+  },
+  "meta": {
+    "cible": "DEFAULT",
+    "variables": [
+      "LIMIT_BAL",
+      "SEX",
+      "EDUCATION",
+      "MARRIAGE",
+      "AGE",
+      "PAY_0",
+      "PAY_2",
+      "PAY_3",
+      "PAY_4",
+      "PAY_5",
+      "PAY_6",
+      "BILL_AMT1",
+      "BILL_AMT2",
+      "BILL_AMT3",
+      "BILL_AMT4",
+      "BILL_AMT5",
+      "BILL_AMT6",
+      "PAY_AMT1",
+      "PAY_AMT2",
+      "PAY_AMT3",
+      "PAY_AMT4",
+      "PAY_AMT5",
+      "PAY_AMT6"
+    ],
+    "numeriques": [
+      "LIMIT_BAL",
+      "AGE",
+      "PAY_0",
+      "PAY_2",
+      "PAY_3",
+      "PAY_4",
+      "PAY_5",
+      "PAY_6",
+      "BILL_AMT1",
+      "BILL_AMT2",
+      "BILL_AMT3",
+      "BILL_AMT4",
+      "BILL_AMT5",
+      "BILL_AMT6",
+      "PAY_AMT1",
+      "PAY_AMT2",
+      "PAY_AMT3",
+      "PAY_AMT4",
+      "PAY_AMT5",
+      "PAY_AMT6"
+    ],
+    "categorielles": [
+      "SEX",
+      "EDUCATION",
+      "MARRIAGE"
+    ],
+    "part_test": 0.2,
+    "graine": 42,
+    "plis": 5,
+    "lignes_entrainement": 24000,
+    "versions": {
+      "python": "3.11.0",
+      "scikit-learn": "1.9.1",
+      "xgboost": "3.2.0"
+    }
+  }
+}

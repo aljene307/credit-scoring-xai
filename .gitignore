@@ -27,10 +27,16 @@ data/
 *.xls
 *.xlsx
 
-# --- Modèles entraînés (taille encore inconnue) ---
-models/
+# --- Modèles entraînés ---
+# Les modèles finaux et les explications précalculées de models/ sont commités une seule fois
+# (choix A05, 13,5 Mo) ; tout autre fichier de ce dossier, et les .joblib / .pkl ailleurs,
+# restent ignorés.
 *.joblib
 *.pkl
+models/*
+!models/*.joblib
+!models/*.json
+!models/*.parquet
 
 # --- Sorties et exports ---
 outputs/
